@@ -96,6 +96,10 @@ docker run -p 8000:8000 -v "$PWD/data:/data" charliegordonmouse/ygo-explorer
 The first time, this downloads the app — about 500 MB, so it may take a few
 minutes. You'll see a lot of text scroll past. That's normal.
 
+> **On an Apple Silicon Mac** (M1 and later) you may see a warning about the
+> image's platform not matching. It's safe to ignore — the app runs fine, just a
+> little slower to start.
+
 When it's ready you'll see a line like:
 
 ```

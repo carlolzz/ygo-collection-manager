@@ -23,6 +23,13 @@ __all__ = [
     "Stats",
     "FilterOptions",
     "CatalogueStatus",
+    "CollectionStatus",
+    "MoneyOut",
+    "ValuedRowOut",
+    "ValuationOut",
+    "RefineJobOut",
+    "DeckCardOut",
+    "DeckAnalysisOut",
 ]
 
 
@@ -153,6 +160,110 @@ class FilterOptions(BaseModel):
     archetype: list[str]
     level_min: int | None = None
     level_max: int | None = None
+
+
+class MoneyOut(BaseModel):
+    """An amount that always states its currency. Serialized as a string so no
+    JSON float ever rounds a price."""
+
+    amount: str
+    currency: str
+
+    @classmethod
+    def of(cls, money) -> "MoneyOut | None":
+        if money is None:
+            return None
+        rounded = money.rounded()
+        return cls(amount=str(rounded.amount), currency=rounded.currency)
+
+
+class ValuedRowOut(BaseModel):
+    passcode: str
+    name: str
+    set_code: str | None = None
+    set_name: str | None = None
+    rarity: str | None = None
+    condition: str
+    edition: str = Field(
+        description="Surfaced, but deliberately not priced — edition moves value "
+        "in reality by an amount that varies too much per card to guess."
+    )
+    language: str
+    quantity: int
+    basis: str = Field(description="per_printing | per_passcode | unpriced")
+    unit_price: MoneyOut | None = None
+    multiplier: str = Field(description="Condition multiplier. A heuristic.")
+    subtotal: MoneyOut | None = None
+
+
+class ValuationOut(BaseModel):
+    """A valuation, with the caveats attached to the number rather than footnoted."""
+
+    total: MoneyOut
+    currency: str
+    provider: str
+    source_field: str
+    is_estimate: bool = True
+    caveat: str = Field(description="Plain words, shown next to the total.")
+    per_printing_rows: int
+    per_passcode_rows: int
+    unpriced_rows: int
+    unpriced_copies: int
+    price_data_age_days: float | None = None
+    rows: list[ValuedRowOut]
+
+
+class RefineJobOut(BaseModel):
+    """Progress of the per-printing refinement job."""
+
+    id: str
+    status: str = Field(description="pending | running | cancelled | finished | error")
+    done: int
+    total: int
+    current_set_code: str | None = None
+    refined: int
+    unavailable: int
+    failed: int
+    skipped_fresh: int = Field(description="Keys with a fresh snapshot, not re-fetched.")
+    errors: list[str] = []
+
+
+class DeckCardOut(BaseModel):
+    passcode: str
+    name: str
+    needed: int = Field(description="Copies the list calls for, across all zones.")
+    owned: int = Field(description="Copies owned, any printing, condition or language.")
+    missing: int
+    zones: dict[str, int]
+    unit_price: MoneyOut | None = None
+    subtotal: MoneyOut | None = None
+
+
+class DeckAnalysisOut(BaseModel):
+    source_format: str = Field(description="ydke | ydk | plaintext")
+    currency: str
+    zone_counts: dict[str, int]
+    total_needed: int
+    total_owned: int
+    total_missing: int
+    distinct_missing: int
+    unpriced_missing_cards: int
+    estimated_cost: MoneyOut | None = None
+    caveat: str
+    unresolved: list[str] = Field(
+        default_factory=list,
+        description="Lines that matched no card. Reported, never silently dropped.",
+    )
+    cards: list[DeckCardOut]
+
+
+class CollectionStatus(BaseModel):
+    """Whether an export is loaded at all — the app runs without one."""
+
+    has_collection: bool
+    csv_path: str | None = None
+    collection_rows: int = 0
+    message: str
 
 
 class CatalogueStatus(BaseModel):

@@ -7,3 +7,4 @@ uv.lock
 # Downloaded catalogue: the YGOPRODeck dump, its derived parquet and card art.
 # Several MB, re-fetchable on demand, and card art is not ours to redistribute.
 data/cache/
+data/ygo_collection_2026-07-28.csv

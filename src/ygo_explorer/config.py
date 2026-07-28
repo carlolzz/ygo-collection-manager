@@ -17,6 +17,17 @@ CARDS_PARQUET = CACHE_DIR / "cards.parquet"
 CARD_SETS_PARQUET = CACHE_DIR / "card_sets.parquet"
 CARD_PRICES_PARQUET = CACHE_DIR / "card_prices.parquet"
 
+IMAGE_CACHE_DIR = CACHE_DIR / "images"
+
+# The built SPA. Absent in development (Vite serves it); present in the image.
+FRONTEND_DIST = Path(
+    os.environ.get("YGO_FRONTEND_DIST", PROJECT_ROOT / "frontend" / "dist")
+)
+
+# Fetch art for owned cards at startup. Off in tests, so a suite never reaches
+# the network; on in the app, where it is a few seconds for a few hundred cards.
+WARM_IMAGES_ON_STARTUP = os.environ.get("YGO_WARM_IMAGES", "1") != "0"
+
 CARDINFO_URL = "https://db.ygoprodeck.com/api/v7/cardinfo.php"
 CARDSETSINFO_URL = "https://db.ygoprodeck.com/api/v7/cardsetsinfo.php"
 

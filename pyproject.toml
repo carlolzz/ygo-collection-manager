@@ -14,6 +14,7 @@ dependencies = [
     "pyarrow>=17.0",
     # DuckDB needs pytz to return a TIMESTAMP WITH TIME ZONE to Python, which is
     # how created_at/updated_at are typed.
+    "python-multipart>=0.0.32",
     "pytz>=2024.1",
     "uvicorn[standard]>=0.30",
 ]

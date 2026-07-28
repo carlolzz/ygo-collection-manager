@@ -1,0 +1,239 @@
+{
+  "_comment": [
+    "A hand-built stand-in for cardinfo.php, shaped exactly like the real dump.",
+    "It deliberately exercises: an alternate-art passcode that is not a top-level",
+    "id (Dark Magician 46986421); an id whose ledger passcode carries leading",
+    "zeros (4041 vs '00004041', and 1 vs '00000001'); a card with no card_sets;",
+    "a '0.00' price that must read as absent, not free; and the absence of",
+    "passcode 99999999, which the ledger owns and which must still be displayed."
+  ],
+  "data": [
+    {
+      "id": 46986414,
+      "name": "Dark Magician",
+      "type": "Normal Monster",
+      "frameType": "normal",
+      "desc": "The ultimate wizard in terms of attack and defense.",
+      "atk": 2500,
+      "def": 2100,
+      "level": 7,
+      "race": "Spellcaster",
+      "attribute": "DARK",
+      "archetype": "Dark Magician",
+      "card_sets": [
+        {
+          "set_name": "Starter Deck: Yugi",
+          "set_code": "SDY-006",
+          "set_rarity": "Ultra Rare",
+          "set_rarity_code": "(UR)",
+          "set_price": "9.96"
+        },
+        {
+          "set_name": "Legend of Blue Eyes White Dragon",
+          "set_code": "LOB-005",
+          "set_rarity": "Ultra Rare",
+          "set_rarity_code": "(UR)",
+          "set_price": "48.51"
+        }
+      ],
+      "card_images": [
+        {
+          "id": 46986414,
+          "image_url": "https://images.ygoprodeck.com/images/cards/46986414.jpg",
+          "image_url_small": "https://images.ygoprodeck.com/images/cards_small/46986414.jpg",
+          "image_url_cropped": "https://images.ygoprodeck.com/images/cards_cropped/46986414.jpg"
+        },
+        {
+          "id": 46986421,
+          "image_url": "https://images.ygoprodeck.com/images/cards/46986421.jpg",
+          "image_url_small": "https://images.ygoprodeck.com/images/cards_small/46986421.jpg",
+          "image_url_cropped": "https://images.ygoprodeck.com/images/cards_cropped/46986421.jpg"
+        }
+      ],
+      "card_prices": [
+        {
+          "cardmarket_price": "0.35",
+          "tcgplayer_price": "1.24",
+          "ebay_price": "2.99",
+          "amazon_price": "4.50",
+          "coolstuffinc_price": "0.99"
+        }
+      ]
+    },
+    {
+      "id": 4041,
+      "name": "Mystical Elf",
+      "type": "Normal Monster",
+      "frameType": "normal",
+      "desc": "A delicate elf that lacks offense, but has a terrific defense.",
+      "atk": 800,
+      "def": 2000,
+      "level": 4,
+      "race": "Spellcaster",
+      "attribute": "LIGHT",
+      "card_sets": [
+        {
+          "set_name": "Legend of Blue Eyes White Dragon",
+          "set_code": "LOB-EN004",
+          "set_rarity": "Super Rare",
+          "set_rarity_code": "(SR)",
+          "set_price": "3.10"
+        }
+      ],
+      "card_images": [
+        {
+          "id": 4041,
+          "image_url": "https://images.ygoprodeck.com/images/cards/4041.jpg",
+          "image_url_small": "https://images.ygoprodeck.com/images/cards_small/4041.jpg",
+          "image_url_cropped": "https://images.ygoprodeck.com/images/cards_cropped/4041.jpg"
+        }
+      ],
+      "card_prices": [
+        {
+          "cardmarket_price": "0.12",
+          "tcgplayer_price": "0.45",
+          "ebay_price": "1.99",
+          "amazon_price": "0.00",
+          "coolstuffinc_price": "0.25"
+        }
+      ]
+    },
+    {
+      "id": 47355498,
+      "name": "Nécrovalley",
+      "type": "Spell Card",
+      "frameType": "spell",
+      "desc": "All cards in the Graveyard cannot be banished, returned to the hand or Deck.",
+      "race": "Field",
+      "archetype": "Gravekeeper's",
+      "card_sets": [
+        {
+          "set_name": "Ancient Sanctuary",
+          "set_code": "AST-EN049",
+          "set_rarity": "Rare",
+          "set_rarity_code": "(R)",
+          "set_price": "2.47"
+        }
+      ],
+      "card_images": [
+        {
+          "id": 47355498,
+          "image_url": "https://images.ygoprodeck.com/images/cards/47355498.jpg",
+          "image_url_small": "https://images.ygoprodeck.com/images/cards_small/47355498.jpg",
+          "image_url_cropped": "https://images.ygoprodeck.com/images/cards_cropped/47355498.jpg"
+        }
+      ],
+      "card_prices": [
+        {
+          "cardmarket_price": "0.85",
+          "tcgplayer_price": "1.10",
+          "ebay_price": "3.50",
+          "amazon_price": "2.20",
+          "coolstuffinc_price": "0.79"
+        }
+      ]
+    },
+    {
+      "id": 27204311,
+      "name": "Nibiru, the Primal Being",
+      "type": "Effect Monster",
+      "frameType": "effect",
+      "desc": "During the Main Phase, if your opponent Normal or Special Summoned 5 or more monsters this turn.",
+      "atk": 3000,
+      "def": 600,
+      "level": 11,
+      "race": "Rock",
+      "attribute": "LIGHT",
+      "card_sets": [
+        {
+          "set_name": "2022 Tin of the Pharaoh's Gods",
+          "set_code": "MP22-EN261",
+          "set_rarity": "Ultra Rare",
+          "set_rarity_code": "(UR)",
+          "set_price": "5.32"
+        }
+      ],
+      "card_images": [
+        {
+          "id": 27204311,
+          "image_url": "https://images.ygoprodeck.com/images/cards/27204311.jpg",
+          "image_url_small": "https://images.ygoprodeck.com/images/cards_small/27204311.jpg",
+          "image_url_cropped": "https://images.ygoprodeck.com/images/cards_cropped/27204311.jpg"
+        }
+      ],
+      "card_prices": [
+        {
+          "cardmarket_price": "3.99",
+          "tcgplayer_price": "6.75",
+          "ebay_price": "8.99",
+          "amazon_price": "12.00",
+          "coolstuffinc_price": "5.99"
+        }
+      ]
+    },
+    {
+      "id": 8736823,
+      "name": "Virtual World Hime - Nyannyan",
+      "type": "Effect Monster",
+      "frameType": "effect",
+      "desc": "If this card is Normal or Special Summoned: You can add 1 Virtual World card from your Deck to your hand.",
+      "atk": 100,
+      "def": 2000,
+      "level": 4,
+      "race": "Spellcaster",
+      "attribute": "WIND",
+      "archetype": "Virtual World",
+      "card_sets": [
+        {
+          "set_name": "2021 Tin of Ancient Battles",
+          "set_code": "MP21-EN223",
+          "set_rarity": "Prismatic Secret Rare",
+          "set_rarity_code": "(PScR)",
+          "set_price": "14.88"
+        }
+      ],
+      "card_images": [
+        {
+          "id": 8736823,
+          "image_url": "https://images.ygoprodeck.com/images/cards/8736823.jpg",
+          "image_url_small": "https://images.ygoprodeck.com/images/cards_small/8736823.jpg",
+          "image_url_cropped": "https://images.ygoprodeck.com/images/cards_cropped/8736823.jpg"
+        }
+      ],
+      "card_prices": [
+        {
+          "cardmarket_price": "2.10",
+          "tcgplayer_price": "3.45",
+          "ebay_price": "5.00",
+          "amazon_price": "7.99",
+          "coolstuffinc_price": "2.99"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "=Test Formula Card",
+      "type": "Trap Card",
+      "frameType": "trap",
+      "desc": "A card whose name trips the exporter's formula guard.",
+      "race": "Normal",
+      "card_images": [
+        {
+          "id": 1,
+          "image_url": "https://images.ygoprodeck.com/images/cards/1.jpg",
+          "image_url_small": "https://images.ygoprodeck.com/images/cards_small/1.jpg",
+          "image_url_cropped": "https://images.ygoprodeck.com/images/cards_cropped/1.jpg"
+        }
+      ],
+      "card_prices": [
+        {
+          "cardmarket_price": "0.00",
+          "tcgplayer_price": "0.00",
+          "ebay_price": "0.00",
+          "amazon_price": "0.00",
+          "coolstuffinc_price": "0.00"
+        }
+      ]
+    }
+  ]
+}

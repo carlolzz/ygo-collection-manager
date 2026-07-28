@@ -1,0 +1,3 @@
+# The exports and the fixture are RFC 4180 with CRLF line endings, and the
+# loader is tested against those exact bytes. Keep git's eol conversion away.
+*.csv -text

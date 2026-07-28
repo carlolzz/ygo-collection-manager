@@ -24,6 +24,7 @@ ygo-explorer = "ygo_explorer.cli:main"
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "pytest-asyncio>=1.4.0",
 ]
 
 [build-system]
@@ -35,3 +36,5 @@ packages = ["src/ygo_explorer"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

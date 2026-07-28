@@ -1,6 +1,6 @@
 services:
   ygo-explorer:
-    image: carlolzz/ygo-explorer:latest
+    image: charliegordonmouse/ygo-explorer:latest
     # Comment the image line and uncomment this to build locally instead.
     # build: .
     container_name: ygo-explorer

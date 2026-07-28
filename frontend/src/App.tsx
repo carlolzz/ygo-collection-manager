@@ -1,5 +1,6 @@
 import { NavLink, Route, Routes } from "react-router-dom";
-import { getCollectionStatus } from "./api";
+import { getCatalogueStatus, getCollectionStatus } from "./api";
+import CatalogueBanner from "./components/CatalogueBanner";
 import EmptyState from "./components/EmptyState";
 import { Loading } from "./components/common";
 import { useAsync } from "./hooks";
@@ -18,6 +19,7 @@ const LINKS = [
 
 export default function App() {
   const { data: status, loading, reload } = useAsync(getCollectionStatus, []);
+  const catalogue = useAsync(getCatalogueStatus, []);
 
   return (
     <div className="app">
@@ -42,13 +44,22 @@ export default function App() {
       ) : status && !status.has_collection ? (
         <EmptyState onLoaded={reload} />
       ) : (
-        <Routes>
-          <Route path="/" element={<BrowsePage />} />
-          <Route path="/card/:passcode" element={<CardPage />} />
-          <Route path="/stats" element={<StatsPage />} />
-          <Route path="/valuation" element={<ValuationPage />} />
-          <Route path="/deck" element={<DeckPage />} />
-        </Routes>
+        <>
+          <CatalogueBanner
+            status={catalogue.data}
+            onRefreshed={() => {
+              catalogue.reload();
+              reload();
+            }}
+          />
+          <Routes>
+            <Route path="/" element={<BrowsePage />} />
+            <Route path="/card/:passcode" element={<CardPage />} />
+            <Route path="/stats" element={<StatsPage />} />
+            <Route path="/valuation" element={<ValuationPage />} />
+            <Route path="/deck" element={<DeckPage />} />
+          </Routes>
+        </>
       )}
     </div>
   );

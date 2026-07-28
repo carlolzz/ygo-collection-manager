@@ -84,13 +84,13 @@ Copy this line, paste it into the terminal, and press Enter:
 **Windows (PowerShell):**
 
 ```powershell
-docker run -p 8000:8000 -v "${PWD}\data:/data" carlolzz/ygo-explorer
+docker run -p 8000:8000 -v "${PWD}\data:/data" charliegordonmouse/ygo-explorer
 ```
 
 **Mac or Linux:**
 
 ```bash
-docker run -p 8000:8000 -v "$PWD/data:/data" carlolzz/ygo-explorer
+docker run -p 8000:8000 -v "$PWD/data:/data" charliegordonmouse/ygo-explorer
 ```
 
 The first time, this downloads the app — about 500 MB, so it may take a few
@@ -115,12 +115,15 @@ there. If not, the page will show a **Choose a CSV export** button.
 
 ### One thing to do on your first visit
 
-Go to the **Valuation** page and the app will tell you it needs card data. Click
-the refresh button (or visit the Valuation page and use *Start refinement* after
-the initial download). The app downloads a catalogue of every Yu-Gi-Oh card —
-around 21 MB, once. Card pictures then appear as you browse.
+A yellow bar across the top will say **Card data not downloaded yet**. Click
+**Download card data** and wait about a minute.
 
-This is the only time the app uses the internet, apart from when you ask it to.
+That fetches a catalogue of every Yu-Gi-Oh card — roughly 21 MB, once — which is
+where card pictures, stats and prices come from. Until you do it, your cards
+will show as plain names with no artwork.
+
+You only ever need to do this again if you want newer prices, and the app will
+tell you when the data is over a month old.
 
 ---
 
@@ -135,7 +138,7 @@ Desktop.
 **To update to a newer version:**
 
 ```
-docker pull carlolzz/ygo-explorer
+docker pull charliegordonmouse/ygo-explorer
 ```
 
 Then start it as usual.

@@ -61,7 +61,7 @@ export default function EmptyState({ onLoaded }: { onLoaded: () => void }) {
       <p className="muted" style={{ marginTop: "2rem" }}>
         Or drop the file into the mounted <code>data/</code> directory and restart:
       </p>
-      <pre>docker run -p 8000:8000 -v "$PWD/data:/data" carlolzz/ygo-explorer</pre>
+      <pre>docker run -p 8000:8000 -v "$PWD/data:/data" charliegordonmouse/ygo-explorer</pre>
     </div>
   );
 }

@@ -10,6 +10,9 @@ The full brief is in [initial_prompt.md](initial_prompt.md).
 
 ---
 
+> **Not a developer?** [**GETTING-STARTED.md**](GETTING-STARTED.md) walks through
+> installing Docker and running this, step by step, with no assumed knowledge.
+
 ## Running it with Docker
 
 The published image ships **empty** — no collection data, no card art. You supply

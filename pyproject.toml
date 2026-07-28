@@ -10,8 +10,6 @@ dependencies = [
     # Required by DuckDB to register the fold() Python UDF, which keeps the
     # NFKD folding to a single implementation shared by SQL and Python.
     "numpy>=2.0",
-    "polars>=1.0",
-    "pyarrow>=17.0",
     # DuckDB needs pytz to return a TIMESTAMP WITH TIME ZONE to Python, which is
     # how created_at/updated_at are typed.
     "python-multipart>=0.0.32",

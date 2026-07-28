@@ -1,0 +1,15 @@
+# Keep the build context small, and keep private or non-redistributable data
+# out of the image entirely. Both of these matter for a public repository.
+data/
+frontend/node_modules/
+frontend/dist/
+.venv/
+.git/
+.github/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+tests/
+*.csv
+initial_prompt.md

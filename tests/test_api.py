@@ -341,3 +341,9 @@ def test_by_type_bucket_includes_an_unknown_key_for_unmatched_cards(client):
     assert unknown and unknown[0]["total_copies"] == 1, (
         "the card the dump does not know still contributes its copy"
     )
+
+
+def test_an_unknown_api_path_is_404_not_the_spa(client):
+    """The SPA catch-all must not swallow API mistakes into a silent 200."""
+    response = client.get("/api/does-not-exist")
+    assert response.status_code == 404

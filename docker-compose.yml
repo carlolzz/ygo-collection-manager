@@ -1,0 +1,14 @@
+services:
+  ygo-explorer:
+    image: carlolzz/ygo-explorer:latest
+    # Comment the image line and uncomment this to build locally instead.
+    # build: .
+    container_name: ygo-explorer
+    ports:
+      - "8000:8000"
+    volumes:
+      # A bind mount, not a named volume, so you can drop your CSV export into
+      # ./data from your file manager. The downloaded card dump and cached
+      # artwork live in ./data/cache and survive a restart.
+      - ./data:/data
+    restart: unless-stopped

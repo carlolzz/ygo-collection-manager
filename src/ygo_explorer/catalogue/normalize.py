@@ -3,23 +3,30 @@
 Splitting cards, printings and prices apart keeps each one at its natural grain:
 one row per passcode, one per printing, one per card. Prices are carried as text
 and cast to DECIMAL downstream, so no amount ever passes through a float.
+
+Written with DuckDB rather than a dataframe library: it is already the query
+engine, it writes parquet natively, and the alternative added ~360 MB to the
+published image to do a job DuckDB does in one statement.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import polars as pl
+import duckdb
 
 from ..config import CARD_PRICES_PARQUET, CARD_SETS_PARQUET, CARDS_PARQUET
 from ..text import fold
 
 __all__ = [
     "normalize_dump",
-    "cards_frame",
-    "card_sets_frame",
-    "card_prices_frame",
+    "cards_rows",
+    "card_sets_rows",
+    "card_prices_rows",
     "passcode_key",
+    "CARDS_SCHEMA",
+    "CARD_SETS_SCHEMA",
+    "CARD_PRICES_SCHEMA",
 ]
 
 # The five price fields and the currency each is quoted in. YGOPRODeck mixes
@@ -32,6 +39,40 @@ PRICE_FIELDS: tuple[tuple[str, str], ...] = (
     ("amazon_price", "amazon_price_usd"),
     ("coolstuffinc_price", "coolstuffinc_price_usd"),
 )
+
+CARDS_SCHEMA: dict[str, str] = {
+    "passcode": "VARCHAR",
+    "passcode_key": "VARCHAR",
+    "card_id": "VARCHAR",
+    "is_alternate_art": "BOOLEAN",
+    "name": "VARCHAR",
+    "name_folded": "VARCHAR",
+    "type": "VARCHAR",
+    "frame_type": "VARCHAR",
+    "attribute": "VARCHAR",
+    "race": "VARCHAR",
+    "archetype": "VARCHAR",
+    "atk": "INTEGER",
+    "defense": "INTEGER",
+    "level": "INTEGER",
+    "description": "VARCHAR",
+    "image_url": "VARCHAR",
+    "image_url_small": "VARCHAR",
+    "image_url_cropped": "VARCHAR",
+}
+
+CARD_SETS_SCHEMA: dict[str, str] = {
+    "card_id": "VARCHAR",
+    "set_code": "VARCHAR",
+    "set_name": "VARCHAR",
+    "set_rarity": "VARCHAR",
+    "set_rarity_code": "VARCHAR",
+    "set_price_usd": "VARCHAR",
+}
+
+CARD_PRICES_SCHEMA: dict[str, str] = {"card_id": "VARCHAR"} | {
+    column: "VARCHAR" for _, column in PRICE_FIELDS
+}
 
 
 def passcode_key(passcode: str | int) -> str:
@@ -64,7 +105,16 @@ def _price(value: object) -> str | None:
     return text
 
 
-def cards_frame(cards: list[dict]) -> pl.DataFrame:
+def _int(value: object) -> int | None:
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def cards_rows(cards: list[dict]) -> list[dict]:
     """One row per passcode, including alternate-artwork passcodes.
 
     A card's alt arts are listed under ``card_images[].id`` and are *not*
@@ -101,83 +151,67 @@ def cards_frame(cards: list[dict]) -> pl.DataFrame:
                     "attribute": card.get("attribute"),
                     "race": card.get("race"),
                     "archetype": card.get("archetype"),
-                    "atk": card.get("atk"),
-                    "defense": card.get("def"),
-                    "level": card.get("level"),
+                    "atk": _int(card.get("atk")),
+                    "defense": _int(card.get("def")),
+                    "level": _int(card.get("level")),
                     "description": card.get("desc"),
                     "image_url": image.get("image_url"),
                     "image_url_small": image.get("image_url_small"),
                     "image_url_cropped": image.get("image_url_cropped"),
                 }
             )
-
-    schema = {
-        "passcode": pl.Utf8,
-        "passcode_key": pl.Utf8,
-        "card_id": pl.Utf8,
-        "is_alternate_art": pl.Boolean,
-        "name": pl.Utf8,
-        "name_folded": pl.Utf8,
-        "type": pl.Utf8,
-        "frame_type": pl.Utf8,
-        "attribute": pl.Utf8,
-        "race": pl.Utf8,
-        "archetype": pl.Utf8,
-        "atk": pl.Int32,
-        "defense": pl.Int32,
-        "level": pl.Int32,
-        "description": pl.Utf8,
-        "image_url": pl.Utf8,
-        "image_url_small": pl.Utf8,
-        "image_url_cropped": pl.Utf8,
-    }
-    return pl.DataFrame(rows, schema=schema, orient="row" if rows else None)
+    return rows
 
 
-def card_sets_frame(cards: list[dict]) -> pl.DataFrame:
+def card_sets_rows(cards: list[dict]) -> list[dict]:
     """One row per printing.
 
     ``set_price`` is already here, which is why per-printing valuation is a local
     join rather than a request per set code. It is quoted in USD, as is
     cardsetsinfo.php — there is no EUR equivalent at printing grain.
     """
-    rows: list[dict] = []
-    for card in cards:
-        card_id = str(card["id"])
-        for entry in card.get("card_sets") or []:
-            rows.append(
-                {
-                    "card_id": card_id,
-                    "set_code": entry.get("set_code"),
-                    "set_name": entry.get("set_name"),
-                    "set_rarity": entry.get("set_rarity"),
-                    "set_rarity_code": entry.get("set_rarity_code"),
-                    "set_price_usd": _price(entry.get("set_price")),
-                }
-            )
-    schema = {
-        "card_id": pl.Utf8,
-        "set_code": pl.Utf8,
-        "set_name": pl.Utf8,
-        "set_rarity": pl.Utf8,
-        "set_rarity_code": pl.Utf8,
-        "set_price_usd": pl.Utf8,
-    }
-    return pl.DataFrame(rows, schema=schema, orient="row" if rows else None)
+    return [
+        {
+            "card_id": str(card["id"]),
+            "set_code": entry.get("set_code"),
+            "set_name": entry.get("set_name"),
+            "set_rarity": entry.get("set_rarity"),
+            "set_rarity_code": entry.get("set_rarity_code"),
+            "set_price_usd": _price(entry.get("set_price")),
+        }
+        for card in cards
+        for entry in (card.get("card_sets") or [])
+    ]
 
 
-def card_prices_frame(cards: list[dict]) -> pl.DataFrame:
+def card_prices_rows(cards: list[dict]) -> list[dict]:
     """One row per card: the per-passcode prices, one column per currency."""
     rows: list[dict] = []
     for card in cards:
         prices = (card.get("card_prices") or [{}])[0]
         row = {"card_id": str(card["id"])}
-        row.update(
-            {column: _price(prices.get(field)) for field, column in PRICE_FIELDS}
-        )
+        row.update({column: _price(prices.get(field)) for field, column in PRICE_FIELDS})
         rows.append(row)
-    schema = {"card_id": pl.Utf8} | {column: pl.Utf8 for _, column in PRICE_FIELDS}
-    return pl.DataFrame(rows, schema=schema, orient="row" if rows else None)
+    return rows
+
+
+def _write_parquet(path: Path, schema: dict[str, str], rows: list[dict]) -> int:
+    """Write typed rows to parquet. An empty table still gets its columns."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    columns = list(schema)
+    ddl = ", ".join(f"{name} {sql_type}" for name, sql_type in schema.items())
+
+    with duckdb.connect() as con:
+        con.execute(f"CREATE TABLE t ({ddl})")
+        if rows:
+            placeholders = ", ".join("?" * len(columns))
+            con.executemany(
+                f"INSERT INTO t VALUES ({placeholders})",
+                [[row.get(c) for c in columns] for row in rows],
+            )
+        literal = str(path.resolve().as_posix()).replace("'", "''")
+        con.execute(f"COPY t TO '{literal}' (FORMAT PARQUET)")
+    return len(rows)
 
 
 def normalize_dump(
@@ -188,12 +222,13 @@ def normalize_dump(
     card_prices_path: Path = CARD_PRICES_PARQUET,
 ) -> dict[str, int]:
     """Write the three tables; return each one's row count."""
-    cards_path.parent.mkdir(parents=True, exist_ok=True)
-    frames = {
-        cards_path: cards_frame(cards),
-        card_sets_path: card_sets_frame(cards),
-        card_prices_path: card_prices_frame(cards),
+    written = {
+        cards_path: _write_parquet(cards_path, CARDS_SCHEMA, cards_rows(cards)),
+        card_sets_path: _write_parquet(
+            card_sets_path, CARD_SETS_SCHEMA, card_sets_rows(cards)
+        ),
+        card_prices_path: _write_parquet(
+            card_prices_path, CARD_PRICES_SCHEMA, card_prices_rows(cards)
+        ),
     }
-    for path, frame in frames.items():
-        frame.write_parquet(path)
-    return {path.stem: frame.height for path, frame in frames.items()}
+    return {path.stem: count for path, count in written.items()}

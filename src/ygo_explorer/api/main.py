@@ -10,9 +10,9 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..config import FRONTEND_DIST, WARM_IMAGES_ON_STARTUP
@@ -102,11 +102,17 @@ def _mount_frontend(app: FastAPI) -> None:
 
     index = FRONTEND_DIST / "index.html"
 
-    @app.get("/{full_path:path}", include_in_schema=False)
-    def spa(full_path: str):
-        """Client-side routing: unknown paths fall through to the SPA."""
-        candidate = FRONTEND_DIST / full_path
-        if full_path and candidate.is_file():
+    # Handled on the 404 rather than as a catch-all route. A catch-all GET
+    # matches before Starlette can report a method mismatch, so a GET on a
+    # POST-only endpoint would answer 200 with index.html instead of 405 —
+    # every API mistake silently becoming a valid-looking page.
+    @app.exception_handler(404)
+    async def spa_fallback(request: Request, exc: HTTPException):
+        path = request.url.path
+        if path.startswith("/api/"):
+            return JSONResponse({"detail": exc.detail}, status_code=404)
+        candidate = FRONTEND_DIST / path.lstrip("/")
+        if candidate.is_file() and candidate.resolve().is_relative_to(FRONTEND_DIST):
             return FileResponse(candidate)
         return FileResponse(index)
 

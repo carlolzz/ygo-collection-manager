@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 
 import httpx
-import polars as pl
 import pytest
 
 from ygo_explorer.catalogue.dump import (
@@ -17,9 +16,7 @@ from ygo_explorer.catalogue.dump import (
     read_dump,
 )
 from ygo_explorer.catalogue.normalize import (
-    card_prices_frame,
-    card_sets_frame,
-    cards_frame,
+    cards_rows,
     normalize_dump,
     passcode_key,
 )
@@ -71,14 +68,13 @@ def test_python_and_sql_passcode_keys_agree(con):
 
 
 def test_alternate_art_ids_get_their_own_catalogue_entry(dump_cards):
-    frame = cards_frame(dump_cards)
-    passcodes = set(frame["passcode"].to_list())
+    passcodes = {r["passcode"] for r in cards_rows(dump_cards)}
     assert "46986414" in passcodes
     assert "46986421" in passcodes, "alt-art id from card_images[] must be indexed"
 
 
 def test_alternate_art_entry_points_back_at_the_same_card(dump_cards):
-    row = cards_frame(dump_cards).filter(pl.col("passcode") == "46986421").to_dicts()[0]
+    row = next(r for r in cards_rows(dump_cards) if r["passcode"] == "46986421")
     assert row["card_id"] == "46986414"
     assert row["name"] == "Dark Magician"
     assert row["is_alternate_art"] is True
@@ -86,7 +82,7 @@ def test_alternate_art_entry_points_back_at_the_same_card(dump_cards):
 
 
 def test_the_canonical_id_is_not_flagged_as_alternate_art(dump_cards):
-    row = cards_frame(dump_cards).filter(pl.col("passcode") == "46986414").to_dicts()[0]
+    row = next(r for r in cards_rows(dump_cards) if r["passcode"] == "46986414")
     assert row["is_alternate_art"] is False
 
 

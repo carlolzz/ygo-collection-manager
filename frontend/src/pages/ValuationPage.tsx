@@ -36,7 +36,7 @@ export default function ValuationPage() {
             <h1>Collection value</h1>
             <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
               Prices come from the cached card dump, so this costs no network
-              requests at all — it runs locally in a fraction of a second.
+              requests at all. It runs locally in a fraction of a second.
             </p>
           </div>
           <div className="row">

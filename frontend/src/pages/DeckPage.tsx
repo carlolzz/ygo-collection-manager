@@ -25,7 +25,7 @@ export default function DeckPage() {
         <h1>Deck check</h1>
         <p className="muted" style={{ marginTop: 0, fontSize: "0.85rem" }}>
           Paste a deck list and see which cards you are missing and roughly what
-          the missing ones would cost. The format is detected automatically —
+          the missing ones would cost. The format is detected automatically:
           EDOPro's ydke code, its .ydk export, or a plain typed list all work.
         </p>
 

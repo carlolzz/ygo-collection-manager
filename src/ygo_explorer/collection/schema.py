@@ -11,6 +11,7 @@ __all__ = [
     "COLLECTION_COLUMNS",
     "CONDITIONS",
     "CONDITION_RANK",
+    "condition_rank_sql",
     "EDITIONS",
     "NULLABLE_TEXT_COLUMNS",
     "APOSTROPHE_GUARDED_COLUMNS",
@@ -46,6 +47,14 @@ CONDITIONS: tuple[str, ...] = (
 
 #: Sort key for condition; lower is better. Used wherever grades are ordered.
 CONDITION_RANK: dict[str, int] = {name: i for i, name in enumerate(CONDITIONS)}
+
+def condition_rank_sql(column: str = "condition") -> str:
+    """SQL that sorts grades best-first, from the one rank table above."""
+    whens = " ".join(
+        f"WHEN '{name}' THEN {rank}" for name, rank in CONDITION_RANK.items()
+    )
+    return f"CASE {column} {whens} ELSE {len(CONDITIONS)} END"
+
 
 EDITIONS: tuple[str, ...] = ("FIRST", "UNLIMITED", "LIMITED")
 

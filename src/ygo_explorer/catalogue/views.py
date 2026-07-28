@@ -158,20 +158,23 @@ SELECT
 def attach_catalogue(
     con: duckdb.DuckDBPyConnection,
     *,
-    cards_path: Path = CARDS_PARQUET,
-    card_sets_path: Path = CARD_SETS_PARQUET,
-    card_prices_path: Path = CARD_PRICES_PARQUET,
+    cards_path: Path | None = None,
+    card_sets_path: Path | None = None,
+    card_prices_path: Path | None = None,
 ) -> None:
     """Create the catalogue tables and the joined views on an open connection.
 
     Safe to call before any dump has been fetched: the tables are created empty,
     every collection row reports ``in_catalogue = false``, and the app works with
     card attributes shown as unknown.
+
+    The configured paths are read here rather than bound as defaults, so a caller
+    can redirect the cache without the defaults having frozen at import time.
     """
     paths = {
-        "cards": cards_path,
-        "card_sets": card_sets_path,
-        "card_prices": card_prices_path,
+        "cards": cards_path or CARDS_PARQUET,
+        "card_sets": card_sets_path or CARD_SETS_PARQUET,
+        "card_prices": card_prices_path or CARD_PRICES_PARQUET,
     }
     for table, ddl in CATALOGUE_TABLES.items():
         con.execute(f"CREATE OR REPLACE TABLE {table} ({ddl})")

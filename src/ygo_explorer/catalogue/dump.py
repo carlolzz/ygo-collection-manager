@@ -111,7 +111,7 @@ async def fetch_dump(
     *,
     client: httpx.AsyncClient | None = None,
     force: bool = False,
-    cache_dir: Path = CACHE_DIR,
+    cache_dir: Path | None = None,
 ) -> DumpMeta:
     """Download the dump, cache it, and derive the catalogue tables.
 
@@ -122,7 +122,7 @@ async def fetch_dump(
             the dump is several megabytes.
         cache_dir: where the JSON, its metadata and the derived parquet go.
     """
-    paths = CachePaths(cache_dir)
+    paths = CachePaths(cache_dir or CACHE_DIR)
     existing = load_meta(paths.meta)
     if existing is not None and not force:
         return existing

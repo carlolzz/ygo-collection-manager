@@ -1,14 +1,21 @@
+import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getCard, imageUrl, valueCard } from "../api";
 import { Amount, ErrorNotice, Loading, formatCondition } from "../components/common";
 import LanguageFlag from "../components/LanguageFlag";
 import { useAction, useAsync } from "../hooks";
+import { usePriceSource } from "../priceSource";
 
 export default function CardPage() {
   const { passcode = "" } = useParams();
+  const { source } = usePriceSource();
   const { data: card, error, loading } = useAsync(() => getCard(passcode), [passcode]);
   // A price only ever appears because this button was pressed.
   const valuation = useAction(valueCard);
+
+  // Drop a figure priced in a currency the user has since moved off.
+  const { setData } = valuation;
+  useEffect(() => setData(null), [source, setData]);
 
   if (loading) return <Loading what="card" />;
   if (error) return <ErrorNotice message={error} />;
@@ -81,7 +88,7 @@ export default function CardPage() {
               <div className="panel-title" style={{ marginBottom: 0 }}>Value</div>
               <button
                 className="primary"
-                onClick={() => valuation.trigger(card.passcode)}
+                onClick={() => valuation.trigger(card.passcode, source)}
                 disabled={valuation.running}
               >
                 {valuation.running ? "Calculating…" : "Calculate value"}
@@ -166,7 +173,9 @@ export default function CardPage() {
                   <th>Set code</th>
                   <th>Set</th>
                   <th>Rarity</th>
-                  <th className="num">Price (USD)</th>
+                  {/* USD whatever the chosen source: there is no per-printing
+                      price in any other currency, at any grain. */}
+                  <th className="num">Printing price (USD)</th>
                   <th></th>
                 </tr>
               </thead>

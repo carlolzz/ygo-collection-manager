@@ -13,6 +13,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from ...config import DEFAULT_PRICE_FIELD
 from ...pricing.refine import JobRegistry, RefineJob, run_refinement
 from ...pricing.snapshots import SnapshotStore
 from ...pricing.valuation import Valuation, value_rows
@@ -79,7 +80,7 @@ def _validated_field(source_field: str) -> str:
 def value_collection(
     db: Annotated[Database, Depends(get_db)],
     store: Annotated[SnapshotStore, Depends(get_store)],
-    source_field: Annotated[str, Query()] = "tcgplayer_price",
+    source_field: Annotated[str, Query()] = DEFAULT_PRICE_FIELD,
 ) -> ValuationOut:
     """Value the whole collection.
 
@@ -97,7 +98,7 @@ def value_card(
     passcode: str,
     db: Annotated[Database, Depends(get_db)],
     store: Annotated[SnapshotStore, Depends(get_store)],
-    source_field: Annotated[str, Query()] = "tcgplayer_price",
+    source_field: Annotated[str, Query()] = DEFAULT_PRICE_FIELD,
 ) -> ValuationOut:
     """Value one card's rows."""
     con = db.cursor()

@@ -39,11 +39,16 @@ REQUESTS_PER_SECOND = 8.0
 # the UI and the valuation job cannot disagree about what "fresh" means.
 PRICE_STALENESS_DAYS = 14
 
-# The valuation source field, and therefore the currency of every total.
-# Chosen because per-printing refinement (card_sets[].set_price, cardsetsinfo.php)
-# is USD-only, so a EUR run could never be rarity-accurate. Never sum across fields.
-DEFAULT_PRICE_FIELD = "tcgplayer_price"
-DEFAULT_PRICE_CURRENCY = "USD"
+# The valuation source field, and therefore the currency of every total. Never
+# sum across fields.
+#
+# Cardmarket, because that is where a European collection is actually bought and
+# sold. The cost is real and is stated in the UI rather than hidden: per-printing
+# refinement (card_sets[].set_price, cardsetsinfo.php) is USD-only, so a EUR run
+# prices every row per passcode and can never reflect rarity. Pick a USD field to
+# get that back — there is no conversion between the two.
+DEFAULT_PRICE_FIELD = "cardmarket_price"
+DEFAULT_PRICE_CURRENCY = "EUR"
 
 
 def collection_csv_path() -> Path:

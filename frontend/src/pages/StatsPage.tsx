@@ -18,6 +18,9 @@ import { useAsync } from "../hooks";
 import type { Bucket } from "../types";
 
 const AXIS = { stroke: "var(--text-faint)", fontSize: 11 };
+// A fixed band, so the pie's two-row legend and the bars' one-row legend leave
+// the same amount of room for the plot above them. 40px fits two rows of 11px.
+const LEGEND = { wrapperStyle: { fontSize: 11 }, verticalAlign: "bottom" as const, height: 40 };
 const TOOLTIP = {
   contentStyle: {
     background: "var(--surface)",
@@ -76,7 +79,7 @@ export default function StatsPage() {
       </div>
 
       <div className="panel">
-        <div className="panel-title">The long tail — cards you hold the most copies of</div>
+        <div className="panel-title">Cards you hold the most copies of</div>
         <div className="table-wrap">
           <table>
             <thead>
@@ -126,11 +129,9 @@ function ChartPanel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="panel">
-      <div className="panel-title">
-        {title}
-        {subtitle && <span style={{ textTransform: "none" }}> · {subtitle}</span>}
-      </div>
+    <div className="panel chart-panel">
+      <div className="panel-title">{title}</div>
+      {subtitle && <div className="panel-subtitle">{subtitle}</div>}
       <div className="chart">{children}</div>
     </div>
   );
@@ -155,7 +156,7 @@ function BucketBars({
         <XAxis dataKey="label" {...AXIS} interval={0} angle={-25} textAnchor="end" height={58} />
         <YAxis {...AXIS} allowDecimals={false} />
         <Tooltip {...TOOLTIP} cursor={{ fill: "var(--surface-2)" }} />
-        <Legend wrapperStyle={{ fontSize: 11 }} />
+        <Legend {...LEGEND} />
         <Bar dataKey="total_copies" name="Copies" fill="var(--chart-1)" radius={[3, 3, 0, 0]} />
         <Bar
           dataKey="distinct_cards"
@@ -173,14 +174,22 @@ function BucketPie({ data }: { data: Bucket[] }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
-        <Pie data={rows} dataKey="value" nameKey="name" outerRadius="75%" strokeWidth={0}>
+        <Pie
+          data={rows}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="50%"
+          outerRadius="78%"
+          strokeWidth={0}
+        >
           {rows.map((_, i) => (
             <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
           ))}
         </Pie>
         {/* Says which count it is — a bare number here would be ambiguous. */}
         <Tooltip {...TOOLTIP} formatter={(value) => [`${value} distinct cards`, ""]} />
-        <Legend wrapperStyle={{ fontSize: 11 }} />
+        <Legend {...LEGEND} />
       </PieChart>
     </ResponsiveContainer>
   );

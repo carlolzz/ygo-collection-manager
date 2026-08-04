@@ -11,6 +11,7 @@ import CardPage from "./pages/CardPage";
 import DeckPage from "./pages/DeckPage";
 import StatsPage from "./pages/StatsPage";
 import ValuationPage from "./pages/ValuationPage";
+import { PriceSourceProvider, PriceSourceSelect } from "./priceSource";
 
 const LINKS = [
   { to: "/", label: "Browse", end: true },
@@ -33,53 +34,58 @@ export default function App() {
   }
 
   return (
-    <div className="app">
-      <nav className="nav">
-        <span className="nav-brand">YGO Collection Explorer</span>
-        <div className="nav-links">
-          {LINKS.map((link) => (
-            <NavLink key={link.to} to={link.to} end={link.end}>
-              {link.label}
-            </NavLink>
-          ))}
-        </div>
-        {status?.has_collection && (
-          <div className="nav-actions">
-            <span className="nav-status">
-              {status.collection_rows} rows · read-only
-            </span>
-            <UploadButton
-              onLoaded={onCollectionLoaded}
-              label="Load CSV"
-              className="subtle"
-              hasCollection
-            />
+    <PriceSourceProvider>
+      <div className="app">
+        <nav className="nav">
+          <span className="nav-brand">YGO Collection Explorer</span>
+          <div className="nav-links">
+            {LINKS.map((link) => (
+              <NavLink key={link.to} to={link.to} end={link.end}>
+                {link.label}
+              </NavLink>
+            ))}
           </div>
-        )}
-      </nav>
+          {status?.has_collection && (
+            <div className="nav-actions">
+              <span className="nav-status">
+                {status.collection_rows} rows · read-only
+              </span>
+              {/* Lives here, not on the valuation page: it decides the currency
+                  of the deck check and the card page too. */}
+              <PriceSourceSelect />
+              <UploadButton
+                onLoaded={onCollectionLoaded}
+                label="Load CSV"
+                className="subtle"
+                hasCollection
+              />
+            </div>
+          )}
+        </nav>
 
-      {loading ? (
-        <Loading what="your collection" />
-      ) : status && !status.has_collection ? (
-        <EmptyState onLoaded={onCollectionLoaded} />
-      ) : (
-        <>
-          <CatalogueBanner
-            status={catalogue.data}
-            onRefreshed={() => {
-              catalogue.reload();
-              reload();
-            }}
-          />
-          <Routes key={dataVersion}>
-            <Route path="/" element={<BrowsePage />} />
-            <Route path="/card/:passcode" element={<CardPage />} />
-            <Route path="/stats" element={<StatsPage />} />
-            <Route path="/valuation" element={<ValuationPage />} />
-            <Route path="/deck" element={<DeckPage />} />
-          </Routes>
-        </>
-      )}
-    </div>
+        {loading ? (
+          <Loading what="your collection" />
+        ) : status && !status.has_collection ? (
+          <EmptyState onLoaded={onCollectionLoaded} />
+        ) : (
+          <>
+            <CatalogueBanner
+              status={catalogue.data}
+              onRefreshed={() => {
+                catalogue.reload();
+                reload();
+              }}
+            />
+            <Routes key={dataVersion}>
+              <Route path="/" element={<BrowsePage />} />
+              <Route path="/card/:passcode" element={<CardPage />} />
+              <Route path="/stats" element={<StatsPage />} />
+              <Route path="/valuation" element={<ValuationPage />} />
+              <Route path="/deck" element={<DeckPage />} />
+            </Routes>
+          </>
+        )}
+      </div>
+    </PriceSourceProvider>
   );
 }

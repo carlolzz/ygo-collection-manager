@@ -60,19 +60,25 @@ def empty_client(fixture_dump: Path, tmp_path: Path, monkeypatch):
 
 
 def test_collection_valuation_states_its_currency_and_caveat(client):
+    """The no-argument run is Cardmarket, and therefore EUR."""
     body = client.post("/api/valuation/collection").json()
-    assert body["total"]["currency"] == "USD"
+    assert body["total"]["currency"] == "EUR"
     assert body["is_estimate"] is True
-    assert "Estimate in USD" in body["caveat"]
-    assert body["source_field"] == "tcgplayer_price"
+    assert "Estimate in EUR" in body["caveat"]
+    assert body["source_field"] == "cardmarket_price"
 
 
 def test_valuation_reports_the_basis_split(client):
-    body = client.post("/api/valuation/collection").json()
+    # Explicitly USD: the per-printing basis only exists there, so the default
+    # EUR run could not exercise this split.
+    body = client.post(
+        "/api/valuation/collection?source_field=tcgplayer_price"
+    ).json()
     total_rows = (
         body["per_printing_rows"] + body["per_passcode_rows"] + body["unpriced_rows"]
     )
     assert total_rows == 8
+    assert body["per_printing_rows"] > 0
     assert body["unpriced_rows"] >= 1
 
 
@@ -143,7 +149,7 @@ def test_deck_reports_missing_counts_and_a_cost(client):
     body = client.post("/api/deck/analyze", json={"text": YDKE}).json()
     assert body["total_needed"] == 15
     assert body["total_owned"] + body["total_missing"] == body["total_needed"]
-    assert body["estimated_cost"]["currency"] == "USD"
+    assert body["estimated_cost"]["currency"] == "EUR"
     assert "playable copy" in body["caveat"]
 
 
@@ -157,6 +163,21 @@ def test_deck_lists_unresolved_lines_rather_than_dropping_them(client):
 
 def test_a_malformed_deck_is_422_with_a_reason(client):
     response = client.post("/api/deck/analyze", json={"text": "ydke://!!"})
+    assert response.status_code == 422
+
+
+def test_deck_costs_in_the_requested_currency(client):
+    body = client.post(
+        "/api/deck/analyze", json={"text": YDKE, "source_field": "tcgplayer_price"}
+    ).json()
+    assert body["currency"] == "USD"
+    assert body["estimated_cost"]["currency"] == "USD"
+
+
+def test_an_unknown_deck_price_field_is_422_not_500(client):
+    response = client.post(
+        "/api/deck/analyze", json={"text": YDKE, "source_field": "made_up"}
+    )
     assert response.status_code == 422
 
 

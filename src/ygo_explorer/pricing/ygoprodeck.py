@@ -15,6 +15,7 @@ from typing import Sequence
 
 import duckdb
 
+from ..config import DEFAULT_PRICE_FIELD
 from ..money import Money
 from .provider import PriceKey
 
@@ -48,7 +49,7 @@ class YgoprodeckProvider:
     name = "ygoprodeck"
 
     def __init__(
-        self, con: duckdb.DuckDBPyConnection, source_field: str = "tcgplayer_price"
+        self, con: duckdb.DuckDBPyConnection, source_field: str = DEFAULT_PRICE_FIELD
     ) -> None:
         if source_field not in CURRENCY_BY_FIELD:
             raise ValueError(

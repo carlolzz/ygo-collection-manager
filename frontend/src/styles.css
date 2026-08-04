@@ -94,7 +94,7 @@ h3 { font-size: 0.95rem; }
 .nav-links a.active { background: var(--accent-soft); color: var(--accent); }
 .nav-actions { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .nav-status { font-size: 0.8rem; color: var(--text-faint); }
-.nav-actions button { padding: 0.25rem 0.6rem; font-size: 0.8rem; }
+.nav-actions button, .nav-actions select { padding: 0.25rem 0.6rem; font-size: 0.8rem; width: auto; }
 .upload-error { font-size: 0.78rem; padding: 0.3rem 0.55rem; }
 
 /* --- surfaces ------------------------------------------------------------- */
@@ -106,7 +106,10 @@ h3 { font-size: 0.95rem; }
   padding: 1.1rem 1.25rem;
   box-shadow: var(--shadow);
 }
-.panel + .panel { margin-top: 1rem; }
+/* No sibling margin here: every place panels stack is a .stack or a .grid-2,
+   both of which already gap them. A margin would double the spacing, and inside
+   a grid it would also shorten the item — which is what pushed the first chart
+   card's title a row's worth higher than the other two. */
 .panel-title {
   font-size: 0.78rem;
   text-transform: uppercase;
@@ -114,6 +117,13 @@ h3 { font-size: 0.95rem; }
   color: var(--text-faint);
   margin-bottom: 0.75rem;
   font-weight: 600;
+}
+.panel-title:has(+ .panel-subtitle) { margin-bottom: 0.2rem; }
+.panel-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  font-weight: 500;
+  margin-bottom: 0.75rem;
 }
 
 .grid-2 { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
@@ -332,6 +342,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .currency-tag { font-size: 0.9rem; color: var(--text-dim); font-weight: 550; margin-left: 0.35rem; }
 
 .chart { width: 100%; height: 260px; }
+
+/* The grid stretches every card in a row to the same height; this makes the
+   chart absorb the difference, so a one- or two-line title never shifts a plot
+   area relative to its neighbours. */
+.panel.chart-panel { display: flex; flex-direction: column; }
+.chart-panel .chart { flex: 1; height: auto; min-height: 240px; }
 
 .pill {
   display: inline-block;

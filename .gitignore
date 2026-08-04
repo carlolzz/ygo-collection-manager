@@ -7,8 +7,11 @@ uv.lock
 # Downloaded catalogue: the YGOPRODeck dump, its derived parquet and card art.
 # Several MB, re-fetchable on demand, and card art is not ours to redistribute.
 data/cache/
-data/ygo_collection_2026-07-28.csv
+# Somebody's actual collection, and the upload endpoint writes a new
+# timestamped one every merge — so match the shape, not one file name.
+data/ygo_collection_*.csv
 frontend/node_modules/
 frontend/dist/
 *.tsbuildinfo
 initial_prompt.md
+README.txt

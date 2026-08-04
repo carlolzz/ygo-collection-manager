@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from ygo_explorer.config import DEFAULT_PRICE_CURRENCY
 from ygo_explorer.deck.compare import analyze_deck
 from ygo_explorer.deck.parse import ParseError, parse_deck
 from ygo_explorer.deck.resolve import resolve_deck
@@ -176,8 +177,16 @@ def test_totals_add_up(catalogue_con):
 
 
 def test_cost_uses_the_per_passcode_market_low_not_the_printing_price(catalogue_con):
-    """Buying a playable copy, so the market low — not SDY-006's $9.96."""
-    analysis = analyze_deck(catalogue_con, parse_deck("Main Deck:\n9 Dark Magician\n"))
+    """Buying a playable copy, so the market low — not SDY-006's $9.96.
+
+    Pinned to USD: SDY-006 is the only printing-grain price in the fixture, and
+    printing prices exist in no other currency.
+    """
+    analysis = analyze_deck(
+        catalogue_con,
+        parse_deck("Main Deck:\n9 Dark Magician\n"),
+        source_field="tcgplayer_price",
+    )
     dm = next(c for c in analysis.cards if c.card_id == "46986414")
     assert dm.missing == 3
     assert dm.unit_price == Money(Decimal("1.24"), "USD")
@@ -205,11 +214,21 @@ def test_an_unpriceable_missing_card_is_counted_separately(catalogue_con):
 
 
 def test_the_estimate_states_its_currency_and_basis(catalogue_con):
+    """The default run, and therefore the configured currency."""
     analysis = analyze_deck(catalogue_con, parse_deck(YDKE))
+    assert analysis.currency == DEFAULT_PRICE_CURRENCY
+    assert analysis.estimated_cost.currency == DEFAULT_PRICE_CURRENCY
+    assert f"Estimate in {DEFAULT_PRICE_CURRENCY}" in analysis.caveat
+    assert "playable copy" in analysis.caveat
+
+
+def test_the_price_field_chooses_the_currency(catalogue_con):
+    """Nothing is converted: asking for another field asks for another currency."""
+    analysis = analyze_deck(
+        catalogue_con, parse_deck(YDKE), source_field="tcgplayer_price"
+    )
     assert analysis.currency == "USD"
     assert analysis.estimated_cost.currency == "USD"
-    assert "Estimate in USD" in analysis.caveat
-    assert "playable copy" in analysis.caveat
 
 
 def test_the_cost_is_the_sum_of_the_subtotals(catalogue_con):

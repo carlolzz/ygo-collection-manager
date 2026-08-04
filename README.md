@@ -125,6 +125,14 @@ priced, the currency, and how old the data is.
 **Deck check.** Paste a `ydke://` code, a `.ydk` file or a plain typed list; get
 what you are missing and roughly what it would cost.
 
+**One price source, chosen in the top bar** and remembered between visits. It
+governs the valuation, the deck check and the per-card figure alike, so two
+numbers in the app are never quoted in different currencies. It names a
+marketplace rather than a currency — Cardmarket (EUR) by default, TCGplayer,
+eBay, Amazon or CoolStuffInc in USD — because the currency is a consequence of
+which marketplace a run reads, not a display setting. Nothing is converted; see
+the pricing notes below.
+
 ### How the deck check counts
 
 - **Format is detected, not declared.** A ydke code is `ydke://<b64>!<b64>!<b64>!`
@@ -154,9 +162,13 @@ actually costs.
 
 **`set_price` is USD on every path**, both in the dump and from
 `cardsetsinfo.php`. A EUR (`cardmarket_price`) run therefore cannot be refined
-per printing at all, which is why `tcgplayer_price` is the default in
-`config.py`. Present per-currency totals side by side, or convert through an
-explicit dated FX rate. Never implicitly.
+per printing at all: every row is priced per passcode and no rarity is
+reflected. That trade is made deliberately — `cardmarket_price` is the default
+in `config.py`, because Cardmarket is where a European collection is actually
+bought and sold, and the cost is stated in the UI rather than shown as a silent
+zero. Pick a USD source in the top bar to get per-printing pricing and the
+refinement job back. Present per-currency totals side by side, or convert
+through an explicit dated FX rate. Never implicitly.
 
 ---
 

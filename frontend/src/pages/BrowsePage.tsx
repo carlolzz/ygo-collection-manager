@@ -268,7 +268,7 @@ function FilterBar({
           Clear {activeCount > 0 && `(${activeCount})`}
         </button>
         <span className="muted" style={{ fontSize: "0.78rem" }}>
-          Filters compose, and the URL holds them — copy it to share this view.
+          Filters compose, and the URL holds them: copy it to share this view.
         </span>
       </div>
     </div>

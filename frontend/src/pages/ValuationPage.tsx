@@ -13,20 +13,20 @@ import {
   formatDays,
 } from "../components/common";
 import { useAction, useAsync } from "../hooks";
+import { isRefinable, sourceFor, usePriceSource } from "../priceSource";
 import type { RefineJob } from "../types";
 
-const SOURCES: [string, string][] = [
-  ["tcgplayer_price", "TCGplayer (USD)"],
-  ["cardmarket_price", "Cardmarket (EUR)"],
-  ["ebay_price", "eBay (USD)"],
-  ["amazon_price", "Amazon (USD)"],
-  ["coolstuffinc_price", "CoolStuffInc (USD)"],
-];
-
 export default function ValuationPage() {
-  const [source, setSource] = useState("tcgplayer_price");
+  const { source } = usePriceSource();
   const catalogue = useAsync(getCatalogueStatus, []);
   const valuation = useAction(valueCollection);
+  const perPrinting = isRefinable(source);
+
+  // A total computed in one currency must not sit under a nav that now names
+  // another. Changing the source discards the old answer rather than
+  // relabelling it.
+  const { setData } = valuation;
+  useEffect(() => setData(null), [source, setData]);
 
   return (
     <div className="stack">
@@ -35,21 +35,13 @@ export default function ValuationPage() {
           <div>
             <h1>Collection value</h1>
             <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-              Prices come from the cached card dump, so this costs no network
-              requests at all. It runs locally in a fraction of a second.
+              Priced from {sourceFor(source).label} in{" "}
+              {sourceFor(source).currency}, out of the cached card dump — so this
+              costs no network requests at all and runs locally in a fraction of
+              a second. Change the marketplace in the top bar.
             </p>
           </div>
           <div className="row">
-            <select
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              style={{ width: "auto" }}
-              aria-label="Price source"
-            >
-              {SOURCES.map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
             <button
               className="primary"
               onClick={() => valuation.trigger(source)}
@@ -76,16 +68,25 @@ export default function ValuationPage() {
                 footnote, and never omitted. */}
             <div className="notice estimate" style={{ marginTop: "0.7rem" }}>
               <strong>This is an estimate.</strong> {valuation.data.caveat} Prices
-              are from data fetched {formatDays(catalogue.data?.age_days)}, and a
-              card's rarity is only reflected where a printing-specific price
-              exists.
+              are from data fetched {formatDays(catalogue.data?.age_days)}.{" "}
+              {perPrinting ? (
+                <>
+                  A card's rarity is only reflected where a printing-specific
+                  price exists.
+                </>
+              ) : (
+                <>
+                  Printing-specific prices are quoted in USD only, so every row
+                  here is priced per card and no rarity is reflected at all.
+                </>
+              )}
             </div>
 
             <div className="tiles" style={{ marginTop: "1rem" }}>
               <Tile
                 value={valuation.data.per_printing_rows}
                 label="Priced per printing"
-                note="Rarity-specific"
+                note={perPrinting ? "Rarity-specific" : "Unavailable in EUR"}
               />
               <Tile
                 value={valuation.data.per_passcode_rows}
@@ -102,7 +103,7 @@ export default function ValuationPage() {
         )}
       </div>
 
-      <RefinementPanel />
+      <RefinementPanel usable={perPrinting} />
 
       {valuation.data && valuation.data.rows.length > 0 && (
         <div className="panel">
@@ -167,8 +168,12 @@ function Tile({ value, label, note }: { value: number; label: string; note: stri
   );
 }
 
-/** The one job that makes network requests, and only when started by hand. */
-function RefinementPanel() {
+/** The one job that makes network requests, and only when started by hand.
+ *
+ * `usable` is false whenever the chosen source is not USD: the endpoint it
+ * refines from quotes `set_price` in USD on every path, so there is nothing it
+ * could add to a EUR total. Saying so beats a button that appears to work. */
+function RefinementPanel({ usable }: { usable: boolean }) {
   const [job, setJob] = useState<RefineJob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
@@ -218,6 +223,7 @@ function RefinementPanel() {
             </button>
           ) : (
             <button
+              disabled={!usable}
               onClick={async () => {
                 setError(null);
                 try {
@@ -232,6 +238,14 @@ function RefinementPanel() {
           )}
         </div>
       </div>
+
+      {!usable && (
+        <div className="notice" style={{ marginTop: "0.8rem" }}>
+          Printing prices are quoted in USD on every path, so refining them adds
+          nothing to a total priced in another currency. Switch the price source
+          in the top bar to a USD marketplace to use this.
+        </div>
+      )}
 
       {error && <div style={{ marginTop: "0.8rem" }}><ErrorNotice message={error} /></div>}
 

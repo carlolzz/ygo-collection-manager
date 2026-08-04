@@ -18,6 +18,7 @@ from decimal import Decimal
 
 import duckdb
 
+from ..config import DEFAULT_PRICE_FIELD
 from ..money import Money
 from .conditions import multiplier_for
 from .provider import PriceKey
@@ -99,7 +100,7 @@ def value_rows(
     con: duckdb.DuckDBPyConnection,
     store: SnapshotStore,
     *,
-    source_field: str = "tcgplayer_price",
+    source_field: str = DEFAULT_PRICE_FIELD,
     passcode: str | None = None,
 ) -> Valuation:
     """Value the whole collection, or one card's rows.

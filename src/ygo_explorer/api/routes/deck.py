@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from ...config import DEFAULT_PRICE_FIELD
 from ...deck.compare import analyze_deck
 from ...deck.parse import ParseError, parse_deck
 from ..deps import Database, get_db
@@ -21,7 +22,7 @@ class DeckRequest(BaseModel):
         "decklist. The format is detected, not declared.",
         min_length=1,
     )
-    source_field: str = "tcgplayer_price"
+    source_field: str = DEFAULT_PRICE_FIELD
 
 
 @router.post("/analyze", response_model=DeckAnalysisOut)
@@ -38,7 +39,11 @@ def analyze(
     except ParseError as exc:
         raise HTTPException(422, str(exc)) from None
 
-    analysis = analyze_deck(db.cursor(), deck, source_field=body.source_field)
+    try:
+        analysis = analyze_deck(db.cursor(), deck, source_field=body.source_field)
+    except ValueError as exc:
+        # An unknown price field is the caller's mistake, not a server fault.
+        raise HTTPException(422, str(exc)) from None
 
     return DeckAnalysisOut(
         source_format=analysis.source_format,

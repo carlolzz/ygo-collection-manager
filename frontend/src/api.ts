@@ -63,12 +63,17 @@ export const getCollectionStatus = () => request<CollectionStatus>("/collection/
 export const refreshCatalogue = (force = false) =>
   post<CatalogueStatus>(`/catalogue/refresh?force=${force}`);
 
-export const valueCollection = (sourceField = "tcgplayer_price") =>
-  post<Valuation>(`/valuation/collection?source_field=${sourceField}`);
-
-export const valueCard = (passcode: string, sourceField = "tcgplayer_price") =>
+// `sourceField` is required on purpose: the default lives in the server's
+// config and nowhere else, so the two can never drift apart.
+export const valueCollection = (sourceField: string) =>
   post<Valuation>(
-    `/valuation/card/${encodeURIComponent(passcode)}?source_field=${sourceField}`,
+    `/valuation/collection?source_field=${encodeURIComponent(sourceField)}`,
+  );
+
+export const valueCard = (passcode: string, sourceField: string) =>
+  post<Valuation>(
+    `/valuation/card/${encodeURIComponent(passcode)}` +
+      `?source_field=${encodeURIComponent(sourceField)}`,
   );
 
 export const startRefinement = () => post<RefineJob>("/valuation/refine");
@@ -76,8 +81,8 @@ export const getRefinement = (id: string) => request<RefineJob>(`/valuation/refi
 export const cancelRefinement = (id: string) =>
   request<RefineJob>(`/valuation/refine/${id}`, { method: "DELETE" });
 
-export const analyzeDeck = (text: string) =>
-  post<DeckAnalysis>("/deck/analyze", { text });
+export const analyzeDeck = (text: string, sourceField: string) =>
+  post<DeckAnalysis>("/deck/analyze", { text, source_field: sourceField });
 
 /** What to do with rows the loaded collection already has. */
 export type UploadMode = "replace" | "merge_sum" | "merge_keep";

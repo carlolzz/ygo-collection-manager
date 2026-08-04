@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { analyzeDeck } from "../api";
 import { Amount, ErrorNotice } from "../components/common";
 import { useAction } from "../hooks";
+import { sourceFor, usePriceSource } from "../priceSource";
 
 const PLACEHOLDER = `Paste a ydke:// code, a .ydk file, or a plain list:
 
@@ -16,8 +17,14 @@ Side Deck:
 
 export default function DeckPage() {
   const [text, setText] = useState("");
+  const { source } = usePriceSource();
   const analysis = useAction(analyzeDeck);
   const result = analysis.data;
+
+  // Costs are in the source's currency, so a change invalidates the answer
+  // rather than merely restating it.
+  const { setData } = analysis;
+  useEffect(() => setData(null), [source, setData]);
 
   return (
     <div className="stack">
@@ -27,6 +34,8 @@ export default function DeckPage() {
           Paste a deck list and see which cards you are missing and roughly what
           the missing ones would cost. The format is detected automatically:
           EDOPro's ydke code, its .ydk export, or a plain typed list all work.
+          Costs are quoted from {sourceFor(source).label} in{" "}
+          {sourceFor(source).currency}, which you can change in the top bar.
         </p>
 
         <textarea
@@ -40,7 +49,7 @@ export default function DeckPage() {
         <div className="filter-actions">
           <button
             className="primary"
-            onClick={() => analysis.trigger(text)}
+            onClick={() => analysis.trigger(text, source)}
             disabled={analysis.running || !text.trim()}
           >
             {analysis.running ? "Checking…" : "Check against my collection"}

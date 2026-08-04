@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 
 import duckdb
 
+from ..config import DEFAULT_PRICE_FIELD
 from ..money import Money, sum_money
 from ..pricing.ygoprodeck import YgoprodeckProvider
 from .parse import ZONES, Deck
@@ -61,7 +62,7 @@ class DeckAnalysis:
     def caveat(self) -> str:
         parts = [
             f"Estimate in {self.currency}, at each card's lowest market price "
-            "across printings — the price of a playable copy, not of any "
+            "across printings: the price of a playable copy, not of any "
             "particular printing or rarity."
         ]
         if self.unpriced_missing_cards:
@@ -98,7 +99,7 @@ def analyze_deck(
     con: duckdb.DuckDBPyConnection,
     deck: Deck,
     *,
-    source_field: str = "tcgplayer_price",
+    source_field: str = DEFAULT_PRICE_FIELD,
     resolution: Resolution | None = None,
 ) -> DeckAnalysis:
     """What the deck needs, what is owned, and what the shortfall would cost."""

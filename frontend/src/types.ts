@@ -103,7 +103,11 @@ export interface FilterOptions {
   type: string[];
   frame_type: string[];
   attribute: string[];
+  /** The raw upstream column, which mixes all three taxonomies below. */
   race: string[];
+  monster_type: string[];
+  spell_type: string[];
+  trap_type: string[];
   archetype: string[];
   level_min: number | null;
   level_max: number | null;

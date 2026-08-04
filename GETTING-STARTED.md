@@ -1,7 +1,7 @@
 # Getting started
 
 A guide to running the YGO Collection Explorer on your own computer. No
-programming needed — you'll copy and paste one command.
+programming needed, you'll copy and paste one command.
 
 It takes about 15 minutes, most of which is waiting for a download.
 
@@ -15,7 +15,7 @@ a rough value, and a tool that checks a deck list against what you own and tells
 you what you're missing.
 
 Everything runs on your own computer. Nothing is uploaded anywhere, and the app
-never changes your collection file — it only reads it.
+never changes your collection file, it only reads it.
 
 ---
 
@@ -44,7 +44,7 @@ running** indicator at the bottom left.
 
 ## Step 2 — Make a folder for your collection
 
-Make a new folder somewhere you'll remember — your Desktop is fine. Call it
+Make a new folder somewhere you'll remember, your Desktop is fine. Call it
 something like `ygo-explorer`.
 
 Inside it, make **another** folder called exactly `data`. So you have:
@@ -54,7 +54,7 @@ ygo-explorer/
 └── data/
 ```
 
-Now put your collection export — the `.csv` file from the scanner app — inside
+Now put your collection export — the `.csv` file from the scanner app inside
 the `data` folder. It'll have a name like `ygo_collection_2026-07-28.csv`.
 
 Don't have one yet? That's fine, carry on. The app will let you add it later
@@ -64,7 +64,7 @@ through a button in the browser.
 
 ## Step 3 — Open a terminal in that folder
 
-A terminal is a window where you type commands. Don't worry — you only need one.
+A terminal is a window where you type commands. You only need one.
 
 **Windows:** Open the `ygo-explorer` folder in File Explorer. Click the address
 bar at the top, type `powershell`, and press Enter.
@@ -93,11 +93,11 @@ docker run -p 8000:8000 -v "${PWD}\data:/data" charliegordonmouse/ygo-explorer
 docker run -p 8000:8000 -v "$PWD/data:/data" charliegordonmouse/ygo-explorer
 ```
 
-The first time, this downloads the app — about 500 MB, so it may take a few
+The first time, this downloads the app (about 500 MB), so it may take a few
 minutes. You'll see a lot of text scroll past. That's normal.
 
 > **On an Apple Silicon Mac** (M1 and later) you may see a warning about the
-> image's platform not matching. It's safe to ignore — the app runs fine, just a
+> image's platform not matching. It's safe to ignore, the app runs fine, just a
 > little slower to start.
 
 When it's ready you'll see a line like:
@@ -122,7 +122,7 @@ there. If not, the page will show a **Choose a CSV export** button.
 A yellow bar across the top will say **Card data not downloaded yet**. Click
 **Download card data** and wait about a minute.
 
-That fetches a catalogue of every Yu-Gi-Oh card — roughly 21 MB, once — which is
+That fetches a catalogue of every Yu-Gi-Oh card (roughly 21 MB), once, which is
 where card pictures, stats and prices come from. Until you do it, your cards
 will show as plain names with no artwork.
 
@@ -148,7 +148,7 @@ docker pull charliegordonmouse/ygo-explorer
 Then start it as usual.
 
 **Your data stays put.** Everything the app downloads goes into the `data`
-folder. You can delete `data/cache` any time to free up space — it'll just
+folder. You can delete `data/cache` any time to free up space, it'll just
 download again next time.
 
 ---
@@ -164,7 +164,7 @@ download again next time.
 
 ### About the deck check
 
-Paste in either kind of deck export from EDOPro — the long `ydke://...` code, or
+Paste in either kind of deck export from EDOPro, the long `ydke://...` code, or
 a plain typed list like:
 
 ```
@@ -194,7 +194,7 @@ useful for "is this deck €20 or €200", not for insurance.
 Docker Desktop isn't running. Open it and wait for **Engine running**.
 
 **"port is already allocated"**
-Something else is using port 8000. Use a different one — change `-p 8000:8000`
+Something else is using port 8000. Use a different one: change `-p 8000:8000`
 to `-p 8080:8000` and then visit <http://localhost:8080> instead.
 
 **The page won't load**
@@ -219,7 +219,7 @@ PowerShell instead (Step 3).
 ## Is this safe?
 
 - Everything runs on your computer. Your collection is never uploaded.
-- The app only reads your CSV file — it can't change or delete it.
+- The app only reads your CSV file, it can't change or delete it.
 - It only uses the internet to download the public card catalogue and card
   pictures, and only when you ask it to.
 - No account, no sign-up, no tracking.

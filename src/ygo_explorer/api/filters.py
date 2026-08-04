@@ -30,7 +30,12 @@ _CATALOGUE_COLUMNS = {
     "type": "type",
     "frame_type": "frame_type",
     "attribute": "attribute",
+    # `race` is the raw upstream column, kept so older shared URLs still resolve.
+    # The three below are its halves, split by card kind in collection_enriched.
     "race": "race",
+    "monster_type": "monster_type",
+    "spell_type": "spell_type",
+    "trap_type": "trap_type",
     "archetype": "archetype",
 }
 
@@ -45,6 +50,9 @@ SORTS: dict[str, str] = {
     "oldest": "first_acquired_at ASC, name COLLATE NOCASE ASC",
     "level": "level DESC NULLS LAST, name COLLATE NOCASE ASC",
     "atk": "atk DESC NULLS LAST, name COLLATE NOCASE ASC",
+    # Aggregate rather than a projected column: the grid groups by passcode, and
+    # the rank is constant within a group anyway.
+    "card_type": "any_value(card_type_rank), name COLLATE NOCASE ASC",
 }
 
 
@@ -67,6 +75,9 @@ class CardFilters:
     frame_type: list[str] = field(default_factory=list)
     attribute: list[str] = field(default_factory=list)
     race: list[str] = field(default_factory=list)
+    monster_type: list[str] = field(default_factory=list)
+    spell_type: list[str] = field(default_factory=list)
+    trap_type: list[str] = field(default_factory=list)
     archetype: list[str] = field(default_factory=list)
     level_min: int | None = None
     level_max: int | None = None

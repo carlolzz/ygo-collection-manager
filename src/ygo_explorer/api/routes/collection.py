@@ -58,9 +58,19 @@ async def upload_collection(
     if not body.strip():
         raise HTTPException(422, "The uploaded file is empty.")
 
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    # The stamp alone is only accurate to the second, so two uploads inside the
+    # same second would land on one path — the second overwriting the first, and
+    # the rollback below deleting it outright. The suffix sorts after the bare
+    # name, which matters because startup picks the lexicographically last CSV.
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
     target = DATA_DIR / f"ygo_collection_{stamp}.csv"
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    for n in range(1, 100):
+        if not target.exists():
+            break
+        target = DATA_DIR / f"ygo_collection_{stamp}_{n:02d}.csv"
+    else:
+        raise HTTPException(429, "Too many uploads in the same second. Try again.")
     target.write_bytes(body)
 
     # Validate before adopting it, and clean up if it is not an export at all —

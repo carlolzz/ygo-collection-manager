@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 import { getCatalogueStatus, getCollectionStatus } from "./api";
 import CatalogueBanner from "./components/CatalogueBanner";
 import EmptyState from "./components/EmptyState";
+import UploadButton from "./components/UploadButton";
 import { Loading } from "./components/common";
 import { useAsync } from "./hooks";
 import BrowsePage from "./pages/BrowsePage";
@@ -20,6 +22,15 @@ const LINKS = [
 export default function App() {
   const { data: status, loading, reload } = useAsync(getCollectionStatus, []);
   const catalogue = useAsync(getCatalogueStatus, []);
+  // Bumped when a new export is loaded. It keys the routes below, so every page
+  // remounts and refetches instead of showing the previous CSV's cards.
+  const [dataVersion, setDataVersion] = useState(0);
+
+  function onCollectionLoaded() {
+    reload();
+    catalogue.reload();
+    setDataVersion((v) => v + 1);
+  }
 
   return (
     <div className="app">
@@ -33,16 +44,19 @@ export default function App() {
           ))}
         </div>
         {status?.has_collection && (
-          <span className="nav-status">
-            {status.collection_rows} rows · read-only
-          </span>
+          <div className="nav-actions">
+            <span className="nav-status">
+              {status.collection_rows} rows · read-only
+            </span>
+            <UploadButton onLoaded={onCollectionLoaded} label="Load CSV" className="subtle" />
+          </div>
         )}
       </nav>
 
       {loading ? (
         <Loading what="your collection" />
       ) : status && !status.has_collection ? (
-        <EmptyState onLoaded={reload} />
+        <EmptyState onLoaded={onCollectionLoaded} />
       ) : (
         <>
           <CatalogueBanner
@@ -52,7 +66,7 @@ export default function App() {
               reload();
             }}
           />
-          <Routes>
+          <Routes key={dataVersion}>
             <Route path="/" element={<BrowsePage />} />
             <Route path="/card/:passcode" element={<CardPage />} />
             <Route path="/stats" element={<StatsPage />} />

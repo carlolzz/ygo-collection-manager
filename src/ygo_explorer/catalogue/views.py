@@ -98,6 +98,21 @@ SELECT
     k.frame_type,
     k.attribute,
     k.race,
+    -- The dump overloads one column three ways: for monsters `race` is the
+    -- creature type, for spells and traps it is the subtype, and for skill cards
+    -- it is a character name truncated to 13 characters upstream. Split here so a
+    -- filter never offers 'Dragon', 'Quick-Play' and 'Zane Truesdal' as peers;
+    -- skill cards fall through all three and drop out of the filter bar entirely.
+    CASE WHEN k.type LIKE '%Monster%' OR k.type = 'Token' THEN k.race END AS monster_type,
+    CASE WHEN k.type LIKE '%Spell%' THEN k.race END AS spell_type,
+    CASE WHEN k.type LIKE '%Trap%' THEN k.race END AS trap_type,
+    -- Monsters, then spells, then traps: the order a deck list is written in.
+    CASE
+        WHEN k.type LIKE '%Monster%' OR k.type = 'Token' THEN 0
+        WHEN k.type LIKE '%Spell%' THEN 1
+        WHEN k.type LIKE '%Trap%' THEN 2
+        ELSE 3
+    END AS card_type_rank,
     k.archetype,
     k.atk,
     k.defense,

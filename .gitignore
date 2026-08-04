@@ -11,3 +11,4 @@ data/ygo_collection_2026-07-28.csv
 frontend/node_modules/
 frontend/dist/
 *.tsbuildinfo
+initial_prompt.md

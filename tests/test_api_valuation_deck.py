@@ -225,6 +225,31 @@ def test_uploading_something_that_is_not_an_export_is_rejected(empty_client):
     assert empty_client.get("/api/collection/status").json()["has_collection"] is False
 
 
+def test_a_rejected_upload_does_not_take_a_good_one_with_it(empty_client, fixture_csv):
+    """Both land in the same second, so they must not land on the same path.
+
+    They used to: the loser was overwritten, then deleted by the rollback, and a
+    typo'd second upload silently destroyed the collection already loaded.
+    """
+    good = empty_client.post(
+        "/api/collection/upload",
+        files={"file": ("export.csv", fixture_csv.read_bytes(), "text/csv")},
+    )
+    assert good.status_code == 200
+    loaded = good.json()["csv_path"]
+
+    bad = empty_client.post(
+        "/api/collection/upload",
+        files={"file": ("junk.csv", b"a,b,c\r\n1,2,3\r\n", "text/csv")},
+    )
+    assert bad.status_code == 422
+
+    status = empty_client.get("/api/collection/status").json()
+    assert status["has_collection"] is True
+    assert status["csv_path"] == loaded
+    assert empty_client.get("/api/cards").json()["total_cards"] == 7
+
+
 # --- images ------------------------------------------------------------------
 
 

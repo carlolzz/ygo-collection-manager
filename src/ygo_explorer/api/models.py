@@ -156,7 +156,12 @@ class FilterOptions(BaseModel):
     type: list[str]
     frame_type: list[str]
     attribute: list[str]
-    race: list[str]
+    race: list[str] = Field(
+        description="The raw upstream column, which mixes all three taxonomies below."
+    )
+    monster_type: list[str] = Field(description="Monster races only.")
+    spell_type: list[str] = Field(description="Spell subtypes only.")
+    trap_type: list[str] = Field(description="Trap subtypes only.")
     archetype: list[str]
     level_min: int | None = None
     level_max: int | None = None

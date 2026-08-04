@@ -4,8 +4,6 @@ import {
   CartesianGrid,
   Cell,
   Legend,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -74,40 +72,6 @@ export default function StatsPage() {
 
         <ChartPanel title="Copies by attribute">
           <BucketBars data={data.by_attribute} />
-        </ChartPanel>
-
-        <ChartPanel title="Copies by archetype" subtitle="Top 30">
-          <BucketBars data={data.by_archetype.slice(0, 12)} />
-        </ChartPanel>
-
-        <ChartPanel title="Copies by set" subtitle="Top 30">
-          <BucketBars data={data.by_set.slice(0, 12)} />
-        </ChartPanel>
-
-        <ChartPanel title="Acquisitions over time" subtitle="From created_at, by month">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data.acquisitions_by_month}>
-              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-              <XAxis dataKey="period" {...AXIS} />
-              <YAxis {...AXIS} allowDecimals={false} />
-              <Tooltip {...TOOLTIP} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Line
-                type="monotone"
-                dataKey="total_copies"
-                name="Copies"
-                stroke="var(--chart-1)"
-                strokeWidth={2}
-              />
-              <Line
-                type="monotone"
-                dataKey="distinct_cards"
-                name="Distinct cards"
-                stroke="var(--chart-2)"
-                strokeWidth={2}
-              />
-            </LineChart>
-          </ResponsiveContainer>
         </ChartPanel>
       </div>
 

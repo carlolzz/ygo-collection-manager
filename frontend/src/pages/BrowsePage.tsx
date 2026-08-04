@@ -10,7 +10,8 @@ const PAGE_SIZE = 60;
 /** Every filter lives in the URL, so a view is shareable and bookmarkable. */
 const FILTER_KEYS = [
   "q", "condition", "edition", "language", "rarity", "set_name",
-  "type", "frame_type", "attribute", "race", "archetype",
+  "type", "frame_type", "attribute",
+  "monster_type", "spell_type", "trap_type", "archetype",
 ] as const;
 
 type FilterKey = (typeof FILTER_KEYS)[number];
@@ -25,12 +26,15 @@ const LABELS: Record<FilterKey, string> = {
   type: "Type",
   frame_type: "Frame",
   attribute: "Attribute",
-  race: "Race",
+  monster_type: "Monster type",
+  spell_type: "Spell type",
+  trap_type: "Trap type",
   archetype: "Archetype",
 };
 
 const SORTS: [string, string][] = [
   ["name", "Name (A–Z)"],
+  ["card_type", "Card type (monsters first)"],
   ["copies", "Most copies"],
   ["newest", "Recently added"],
   ["oldest", "Oldest first"],
@@ -38,14 +42,27 @@ const SORTS: [string, string][] = [
   ["atk", "ATK"],
 ];
 
+/** How dense the grid is. Not a filter — it never counts toward "Clear". */
+const VIEWS: [string, string][] = [
+  ["", "Comfortable"],
+  ["compact", "Compact"],
+];
+
 export default function BrowsePage() {
   const [params, setParams] = useSearchParams();
-  const query = params.toString();
+  // `view` is a display choice, not a query — dropping it here keeps toggling
+  // density from re-fetching the same page of cards.
+  const query = useMemo(() => {
+    const q = new URLSearchParams(params);
+    q.delete("view");
+    return q.toString();
+  }, [params]);
 
   const options = useAsync(getFilterOptions, []);
   const page = useAsync(() => listCards(query), [query]);
 
   const offset = Number(params.get("offset") ?? 0);
+  const compact = params.get("view") === "compact";
 
   function update(key: string, value: string) {
     const next = new URLSearchParams(params);
@@ -55,6 +72,11 @@ export default function BrowsePage() {
     // narrower result is never what was meant.
     if (key !== "offset") next.delete("offset");
     setParams(next);
+  }
+
+  /** Clearing drops the filters, not how you chose to look at the results. */
+  function clearFilters() {
+    setParams(compact ? new URLSearchParams({ view: "compact" }) : new URLSearchParams());
   }
 
   const activeCount = useMemo(
@@ -68,7 +90,7 @@ export default function BrowsePage() {
         params={params}
         options={options.data}
         onChange={update}
-        onClear={() => setParams(new URLSearchParams())}
+        onClear={clearFilters}
         activeCount={activeCount}
       />
 
@@ -95,6 +117,17 @@ export default function BrowsePage() {
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
+              <div className="segmented">
+                {VIEWS.map(([value, label]) => (
+                  <button
+                    key={label}
+                    className={value === (params.get("view") ?? "") ? "active" : ""}
+                    onClick={() => update("view", value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -104,9 +137,9 @@ export default function BrowsePage() {
               <p>No cards in the collection satisfy every active filter.</p>
             </div>
           ) : (
-            <div className="card-grid">
+            <div className={compact ? "card-grid compact" : "card-grid"}>
               {page.data.items.map((card) => (
-                <CardTile key={card.passcode} card={card} />
+                <CardTile key={card.passcode} card={card} compact={compact} />
               ))}
             </div>
           )}
@@ -122,23 +155,29 @@ export default function BrowsePage() {
   );
 }
 
-function CardTile({ card }: { card: CardSummary }) {
+/** Compact drops the type line and moves the copy count onto the art, so the tile
+ *  is art plus one line of name — the count is the one thing too useful to lose. */
+function CardTile({ card, compact }: { card: CardSummary; compact: boolean }) {
+  const copies = `${card.total_copies} ${card.total_copies === 1 ? "copy" : "copies"}`;
   return (
-    <Link to={`/card/${card.passcode}`} className="card">
-      <img
-        className="card-art"
-        src={imageUrl(card.passcode)}
-        alt={card.name}
-        loading="lazy"
-      />
+    <Link to={`/card/${card.passcode}`} className="card" title={compact ? `${card.name} · ${copies}` : undefined}>
+      <div className="card-art-wrap">
+        <img
+          className="card-art"
+          src={imageUrl(card.passcode)}
+          alt={card.name}
+          loading="lazy"
+        />
+        {compact && <span className="copies-badge overlay">×{card.total_copies}</span>}
+      </div>
       <div className="card-body">
         <div className="card-name">{card.name}</div>
-        <div className="card-meta">
-          <span className="copies-badge">
-            {card.total_copies} {card.total_copies === 1 ? "copy" : "copies"}
-          </span>{" "}
-          {card.in_catalogue ? (card.type ?? "") : "card details unknown"}
-        </div>
+        {!compact && (
+          <div className="card-meta">
+            <span className="copies-badge">{copies}</span>{" "}
+            {card.in_catalogue ? (card.type ?? "") : "card details unknown"}
+          </div>
+        )}
       </div>
     </Link>
   );
@@ -168,7 +207,11 @@ function FilterBar({
         ["set_name", options.set_name],
         ["type", options.type],
         ["attribute", options.attribute],
-        ["race", options.race],
+        // Upstream calls all three "race" in one column; they are unrelated
+        // taxonomies, so they get one dropdown each.
+        ["monster_type", options.monster_type],
+        ["spell_type", options.spell_type],
+        ["trap_type", options.trap_type],
         ["archetype", options.archetype],
         ["frame_type", options.frame_type],
       ]
@@ -182,7 +225,6 @@ function FilterBar({
           <input
             id="q"
             value={params.get("q") ?? ""}
-            placeholder="Necrovalley, nécrovalley…"
             onChange={(e) => onChange("q", e.target.value)}
           />
         </div>

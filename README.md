@@ -15,7 +15,7 @@ The full brief is in [initial_prompt.md](initial_prompt.md).
 
 ## Running it with Docker
 
-The published image ships **empty** — no collection data, no card art. You supply
+The published image ships **empty**, no collection data, no card art. You supply
 a CSV export, and the card catalogue downloads itself on first use into the
 mounted directory.
 
@@ -30,7 +30,7 @@ Then open <http://localhost:8000>. Without a compose file:
 docker run -p 8000:8000 -v "$PWD/data:/data" charliegordonmouse/ygo-explorer
 ```
 
-If you have no CSV to hand, start it anyway — the app comes up with an empty
+If you have no CSV to hand, start it anyway: the app comes up with an empty
 collection and offers an upload button.
 
 > **Git Bash on Windows**: it rewrites `-v /c/…:/data` into nonsense and Docker
@@ -42,7 +42,7 @@ collection and offers an upload button.
 
 | | |
 |---|---|
-| `data/ygo_collection_*.csv` | your export — read, never written |
+| `data/ygo_collection_*.csv` | your export, read only |
 | `data/cache/cardinfo.json` | the YGOPRODeck bulk dump, ~21 MB, fetched on request |
 | `data/cache/*.parquet` | derived card, printing and price tables |
 | `data/cache/images/` | card art, downloaded once per card |
@@ -70,9 +70,9 @@ API docs at <http://127.0.0.1:8000/docs>. The export is picked up from
 
 Two sources, joined on the passcode:
 
-- **The CSV is the ownership ledger** — what is owned, how many, in what
+- **The CSV is the ownership ledger**: what is owned, how many, in what
   condition, edition, language and printing.
-- **YGOPRODeck's bulk `cardinfo.php` dump is the card catalogue** — type,
+- **YGOPRODeck's bulk `cardinfo.php` dump is the card catalogue**: type,
   attribute, race, atk/def/level, archetype, text, image URLs *and prices*. One
   request covers every card, cached on disk, refetched only when asked.
 
@@ -85,7 +85,7 @@ Each is handled once, in one place, and pinned by a test:
 | | |
 |---|---|
 | Passcodes carry leading zeros and vary in width (`00004041`, `8736823`) | Always strings. `passcode_key` ignores leading zeros **for joining only** |
-| Alt-art passcodes are not top-level dump ids | The card index unions `id` with every `card_images[].id` — 14,641 passcodes across 14,476 cards |
+| Alt-art passcodes are not top-level dump ids | The card index unions `id` with every `card_images[].id` 14,641 passcodes across 14,476 cards |
 | Missing values are `''`, never a NULL token | Normalized to NULL once, on load |
 | The exporter prefixes `=+-@` fields with `'` against formula injection | Exactly one leading apostrophe stripped from `name` and `notes` |
 | A card occupies several rows | `SUM(quantity)` and `COUNT(DISTINCT passcode)` are never conflated, and no response field is called `count` |
@@ -99,7 +99,7 @@ Each is handled once, in one place, and pinned by a test:
 **Browse.** Card grid with real artwork, filter bar, and a detail view showing
 stats, card text, the printings you own and the condition/edition/language
 breakdown. Filters compose and live in the URL, so a view is shareable. Name
-search folds NFKD on both sides — `Necrovalley` finds `Nécrovalley`.
+search folds NFKD on both sides: `Necrovalley` finds `Nécrovalley`.
 
 **Statistics.** Totals, distributions by condition/type/attribute/archetype/set,
 acquisitions over time, and the long tail. Every chart says *which* count it is
@@ -117,8 +117,8 @@ what you are missing and roughly what it would cost.
 ### How the deck check counts
 
 - **Format is detected, not declared.** A ydke code is `ydke://<b64>!<b64>!<b64>!`
-  where each section is base64 of a little-endian `uint32` array — packed binary,
-  not text — and a repeated passcode means multiple copies.
+  where each section is base64 of a little-endian `uint32` array (packed binary,
+  not text) and a repeated passcode means multiple copies.
 - **Demand is aggregated across main, extra and side**, because you need those
   copies at the same time. A list running 2 Mystical Space Typhoon main and 1
   side needs three cards.
@@ -134,7 +134,7 @@ what you are missing and roughly what it would cost.
 
 **Per-printing prices are for valuing, not for shopping.** Only 12,363 of 44,138
 printing rows carry a `set_price`, and that sparse subset is unrepresentative in
-both directions — Maxx "C" has 1 of 10 printings priced and reads $27.00 against
+both directions: Maxx "C" has 1 of 10 printings priced and reads $27.00 against
 a $3.49 per-passcode figure, while Thunder King Rai-Oh reads $4.57 against
 $10.94. So valuation uses the printing price where the printing is known (it is
 the more specific fact about a card you hold), and the deck check uses the
@@ -143,7 +143,7 @@ actually costs.
 
 **`set_price` is USD on every path**, both in the dump and from
 `cardsetsinfo.php`. A EUR (`cardmarket_price`) run therefore cannot be refined
-per printing at all — which is why `tcgplayer_price` is the default in
+per printing at all, which is why `tcgplayer_price` is the default in
 `config.py`. Present per-currency totals side by side, or convert through an
 explicit dated FX rate. Never implicitly.
 
@@ -155,10 +155,10 @@ explicit dated FX rate. Never implicitly.
   file and never modifies an existing one.
 - Nothing touches the network except an explicit click: the catalogue refresh,
   the printing-price refinement job, and a lazy image fetch on first view. Not on
-  page load, scroll, filter change or timer — and a test asserts it.
+  page load, scroll, filter change or timer and a test asserts it.
 - One token bucket at 8 req/s, shared by everything. YGOPRODeck blocks an IP for
   an hour above 20 req/s.
-- Card art is downloaded, never hotlinked — their guide requires it.
+- Card art is downloaded, never hotlinked, since their guide requires it.
 - Every price read goes through the append-only snapshot store. No provider is
   called from a request handler.
 - Money is `Decimal` with an explicit currency, never summed across currencies.

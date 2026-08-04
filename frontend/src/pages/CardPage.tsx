@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { getCard, imageUrl, valueCard } from "../api";
 import { Amount, ErrorNotice, Loading, formatCondition } from "../components/common";
+import LanguageFlag from "../components/LanguageFlag";
 import { useAction, useAsync } from "../hooks";
 
 export default function CardPage() {
@@ -130,7 +131,9 @@ export default function CardPage() {
                   <td className="num">{row.quantity}</td>
                   <td>{formatCondition(row.condition)}</td>
                   <td>{row.edition.toLowerCase()}</td>
-                  <td>{row.language}</td>
+                  <td className="lang-cell">
+                    <LanguageFlag code={row.language} /> {row.language}
+                  </td>
                   <td>
                     {row.set_code ? (
                       <>

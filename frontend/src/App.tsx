@@ -48,7 +48,12 @@ export default function App() {
             <span className="nav-status">
               {status.collection_rows} rows · read-only
             </span>
-            <UploadButton onLoaded={onCollectionLoaded} label="Load CSV" className="subtle" />
+            <UploadButton
+              onLoaded={onCollectionLoaded}
+              label="Load CSV"
+              className="subtle"
+              hasCollection
+            />
           </div>
         )}
       </nav>

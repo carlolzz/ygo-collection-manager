@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getFilterOptions, imageUrl, listCards } from "../api";
 import { ErrorNotice, Loading } from "../components/common";
+import { LanguageFlags, languageName } from "../components/LanguageFlag";
 import { useAsync } from "../hooks";
 import type { CardSummary, FilterOptions } from "../types";
 
@@ -156,11 +157,17 @@ export default function BrowsePage() {
 }
 
 /** Compact drops the type line and moves the copy count onto the art, so the tile
- *  is art plus one line of name — the count is the one thing too useful to lose. */
+ *  is art plus one line of name — the count is the one thing too useful to lose.
+ *  The flags follow it onto the art, on the opposite corner. */
 function CardTile({ card, compact }: { card: CardSummary; compact: boolean }) {
   const copies = `${card.total_copies} ${card.total_copies === 1 ? "copy" : "copies"}`;
+  const langs = card.languages.map(languageName).join(", ");
   return (
-    <Link to={`/card/${card.passcode}`} className="card" title={compact ? `${card.name} · ${copies}` : undefined}>
+    <Link
+      to={`/card/${card.passcode}`}
+      className="card"
+      title={compact ? `${card.name} · ${copies}${langs && ` · ${langs}`}` : langs || undefined}
+    >
       <div className="card-art-wrap">
         <img
           className="card-art"
@@ -168,12 +175,18 @@ function CardTile({ card, compact }: { card: CardSummary; compact: boolean }) {
           alt={card.name}
           loading="lazy"
         />
-        {compact && <span className="copies-badge overlay">×{card.total_copies}</span>}
+        {compact && (
+          <>
+            <LanguageFlags codes={card.languages} max={2} className="overlay" />
+            <span className="copies-badge overlay">×{card.total_copies}</span>
+          </>
+        )}
       </div>
       <div className="card-body">
         <div className="card-name">{card.name}</div>
         {!compact && (
           <div className="card-meta">
+            <LanguageFlags codes={card.languages} />{" "}
             <span className="copies-badge">{copies}</span>{" "}
             {card.in_catalogue ? (card.type ?? "") : "card details unknown"}
           </div>
@@ -239,7 +252,11 @@ function FilterBar({
               <option value="">Any</option>
               {values.map((v) => (
                 <option key={v} value={v}>
-                  {key === "condition" ? v.replace(/_/g, " ").toLowerCase() : v}
+                  {key === "condition"
+                    ? v.replace(/_/g, " ").toLowerCase()
+                    : key === "language"
+                      ? `${v} — ${languageName(v)}`
+                      : v}
                 </option>
               ))}
             </select>

@@ -123,6 +123,21 @@ def test_ownership_and_catalogue_filters_compose_identically(client):
     assert mixed["items"][0]["name"] == "Dark Magician"
 
 
+def test_a_card_summary_lists_every_language_it_is_held_in(client):
+    """Not functionally dependent on the passcode, unlike the catalogue columns:
+    the fixture holds Dark Magician in English and in German."""
+    items = client.get("/api/cards").json()["items"]
+    by_name = {item["name"]: item for item in items}
+    assert by_name["Dark Magician"]["languages"] == ["DE", "EN"]
+    assert by_name["Mystical Elf"]["languages"] == ["EN"]
+
+
+def test_a_filtered_summary_still_lists_only_the_matching_languages(client):
+    """The rollup happens after the filter, so a language filter narrows it."""
+    items = client.get("/api/cards", params={"language": "DE"}).json()["items"]
+    assert [item["languages"] for item in items] == [["DE"]]
+
+
 def test_multiple_values_of_one_filter_are_ored(client):
     both = client.get("/api/cards", params=[("condition", "POOR"), ("condition", "MINT")]).json()
     assert both["total_cards"] == 2

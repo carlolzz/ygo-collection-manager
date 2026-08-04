@@ -5,6 +5,9 @@ programming needed, you'll copy and paste one command.
 
 It takes about 15 minutes, most of which is waiting for a download.
 
+In a hurry, or reading this in a plain text editor? **README.txt** next to this
+file is the same thing cut down to the five steps.
+
 ---
 
 ## What this app does
@@ -150,6 +153,22 @@ Then start it as usual.
 **Your data stays put.** Everything the app downloads goes into the `data`
 folder. You can delete `data/cache` any time to free up space, it'll just
 download again next time.
+
+### Loading a newer export
+
+Click **Load CSV** in the top right and pick the file. If you already have a
+collection loaded, the app counts how much of the new file it already has and
+asks what to do with the overlap:
+
+| Choice | Use it when |
+|---|---|
+| **Add the quantities together** | The file only holds cards you've scanned since last time. Two copies plus two copies becomes four. |
+| **Keep one of each duplicate** | The file is a fresh export of everything you own. Cards in both end up at the new file's quantity, and anything new is added. Loading the same file twice this way changes nothing. |
+| **Replace my collection** | You want to forget what's loaded and use only this file. |
+
+Whichever you pick, the CSV files already in your `data` folder are left exactly
+as they are. The result is written as a new `ygo_collection_…csv` beside them,
+so nothing you've loaded before is ever lost, and the app reads the newest one.
 
 ---
 

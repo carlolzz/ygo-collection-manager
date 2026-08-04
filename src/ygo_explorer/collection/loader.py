@@ -21,6 +21,11 @@ __all__ = [
     "CollectionDataError",
     "open_collection",
     "read_header",
+    "row_count",
+    "normalized_query",
+    "guard_expr",
+    "register_fold",
+    "validate_header",
 ]
 
 
@@ -58,7 +63,15 @@ def read_header(csv_path: Path) -> tuple[str, ...]:
     return tuple(row[0] for row in rows)
 
 
-def _validate_header(csv_path: Path) -> None:
+def row_count(csv_path: Path) -> int:
+    """How many rows an export holds, header excluded."""
+    with duckdb.connect() as con:
+        return int(
+            con.execute(f"SELECT COUNT(*) FROM {_read_csv_expr(csv_path)}").fetchone()[0]
+        )
+
+
+def validate_header(csv_path: Path) -> None:
     """Fail loudly, naming the column, before a single number is computed."""
     actual = read_header(csv_path)
     if actual == COLLECTION_COLUMNS:
@@ -90,7 +103,7 @@ def _validate_header(csv_path: Path) -> None:
     )
 
 
-def _register_fold(con: duckdb.DuckDBPyConnection) -> None:
+def register_fold(con: duckdb.DuckDBPyConnection) -> None:
     """Expose the one diacritic-folding function to SQL as ``fold()``."""
 
     def _fold(value: str | None) -> str | None:
@@ -108,6 +121,26 @@ def _unguard(column: str) -> str:
     )
 
 
+#: What the exporter's guard exists to defuse: the characters a spreadsheet
+#: treats as the start of a formula. Tab and carriage return are spelled with
+#: chr() so the generated SQL stays readable and has no invisible characters.
+_FORMULA_TRIGGERS = ("'='", "'+'", "'-'", "'@'", "chr(9)", "chr(13)")
+
+
+def guard_expr(column: str) -> str:
+    """The inverse of ``_unguard``: re-apply the exporter's injection guard.
+
+    Only needed when this app *writes* a CSV — the merge does. Without it a
+    merged export would hand a spreadsheet a card named ``-Ancient Gear`` as a
+    formula, which is the very thing the scanner's guard prevents.
+    """
+    triggers = ", ".join(_FORMULA_TRIGGERS)
+    return (
+        f"CASE WHEN {column} IS NOT NULL AND left({column}, 1) IN ({triggers}) "
+        f"THEN '''' || {column} ELSE {column} END"
+    )
+
+
 # The two ISO-8601 shapes Dart's toIso8601String can emit for a UTC instant.
 _TIMESTAMP_FORMATS = "['%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%SZ']"
 
@@ -116,8 +149,7 @@ def _utc(column: str) -> str:
     return f"try_strptime({column}, {_TIMESTAMP_FORMATS}) AT TIME ZONE 'UTC'"
 
 
-_BUILD_COLLECTION = f"""
-CREATE OR REPLACE TABLE collection AS
+_NORMALIZE = f"""
 WITH raw AS (SELECT * FROM {{source}}),
 unguarded AS (
     SELECT
@@ -160,6 +192,18 @@ SELECT
     updated_at_raw
 FROM unguarded
 """
+
+_BUILD_COLLECTION = "CREATE OR REPLACE TABLE collection AS " + _NORMALIZE
+
+
+def normalized_query(csv_path: Path) -> str:
+    """The normalizing SELECT over one export, as a subquery-ready string.
+
+    Exposed so a *second* CSV can be read through the identical normalization —
+    the merge compares rows by the natural key, and a key built from raw text
+    would not match one built from trimmed, unguarded text.
+    """
+    return _NORMALIZE.format(source=_read_csv_expr(csv_path))
 
 
 def _validate_data(con: duckdb.DuckDBPyConnection, csv_path: Path) -> None:
@@ -215,13 +259,13 @@ def open_collection(
     if not path.is_file():
         raise FileNotFoundError(f"No collection export at {path}")
 
-    _validate_header(path)
+    validate_header(path)
 
     con = con if con is not None else duckdb.connect()
     # Without this the session renders TIMESTAMPTZ in the machine's local zone,
     # so the same export would read differently in Rome and in Tokyo.
     con.execute("SET TimeZone = 'UTC'")
-    _register_fold(con)
+    register_fold(con)
     con.execute(_BUILD_COLLECTION.format(source=_read_csv_expr(path)))
     _validate_data(con, path)
     return con

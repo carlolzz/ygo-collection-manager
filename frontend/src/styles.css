@@ -236,6 +236,44 @@ label { font-size: 0.78rem; color: var(--text-dim); display: block; margin-botto
   box-shadow: var(--shadow);
 }
 
+/* --- language flags ------------------------------------------------------- */
+
+.lang-flags { display: inline-flex; align-items: center; gap: 0.2rem; vertical-align: middle; }
+.lang { display: inline-flex; }
+.lang-flag {
+  width: 1.05rem;
+  height: 0.7rem;
+  border-radius: 2px;
+  display: block;
+  /* The Japanese and Korean flags are mostly white, which would otherwise
+     dissolve into the surface behind them. */
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.35);
+}
+/* Codes with no flag — AE, and anything the scanner does not offer. */
+.lang-chip {
+  display: inline-block;
+  background: var(--surface-2);
+  color: var(--text-faint);
+  border-radius: 3px;
+  padding: 0 0.22rem;
+  font-size: 0.6rem;
+  font-weight: 650;
+  line-height: 1.15rem;
+}
+/* The twin of .copies-badge.overlay, on the opposite corner. */
+.lang-flags.overlay {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 0.1rem 0.2rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.lang-cell { white-space: nowrap; }
+.lang-cell .lang { margin-right: 0.15rem; vertical-align: middle; }
+
 /* --- tables --------------------------------------------------------------- */
 
 .table-wrap { overflow-x: auto; }
@@ -308,3 +346,58 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .progress-track { height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
 .progress-fill { height: 100%; background: var(--accent); transition: width 0.2s; }
+
+/* --- upload dialog -------------------------------------------------------- */
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.1rem 1.2rem;
+  width: min(30rem, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  cursor: default;
+}
+
+.choices { display: flex; flex-direction: column; gap: 0.4rem; }
+.choice {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  cursor: pointer;
+}
+.choice:hover { border-color: var(--accent); }
+.choice.selected { border-color: var(--accent); background: var(--accent-soft); }
+.choice input { margin-top: 0.15rem; width: auto; }
+.choice > span { display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.82rem; }
+.choice .muted { font-size: 0.76rem; line-height: 1.35; }
+
+.modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+.modal .filename { color: var(--text); font-size: 0.88rem; }

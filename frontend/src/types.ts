@@ -28,6 +28,8 @@ export interface CardSummary {
   row_count: number;
   printing_count: number;
   first_acquired_at: string | null;
+  /** Every distinct language owned, sorted. Free-form, so not a union type. */
+  languages: string[];
 }
 
 export interface CardPage {
@@ -130,6 +132,19 @@ export interface CollectionStatus {
   csv_path: string | null;
   collection_rows: number;
   message: string;
+}
+
+/** What an upload would do to the loaded collection, counted before it does it.
+ *
+ * "Overlapping" means the same printing in the same condition, edition and
+ * language — the natural key — not merely the same card.
+ */
+export interface UploadPreview {
+  has_collection: boolean;
+  current_rows: number;
+  incoming_rows: number;
+  overlapping_rows: number;
+  new_rows: number;
 }
 
 export interface ValuedRow {

@@ -12,6 +12,8 @@ The full brief is in [initial_prompt.md](initial_prompt.md).
 
 > **Not a developer?** [**GETTING-STARTED.md**](GETTING-STARTED.md) walks through
 > installing Docker and running this, step by step, with no assumed knowledge.
+> [**README.txt**](README.txt) is the same in five steps, as plain text that
+> opens in Notepad.
 
 ## Running it with Docker
 
@@ -99,7 +101,16 @@ Each is handled once, in one place, and pinned by a test:
 **Browse.** Card grid with real artwork, filter bar, and a detail view showing
 stats, card text, the printings you own and the condition/edition/language
 breakdown. Filters compose and live in the URL, so a view is shareable. Name
-search folds NFKD on both sides: `Necrovalley` finds `Nécrovalley`.
+search folds NFKD on both sides: `Necrovalley` finds `Nécrovalley`. Each tile
+carries the flags of the languages it is held in, drawn as inline SVG rather
+than emoji because Windows ships no flag glyphs.
+
+**Loading an export**, either by dropping it in the mount or through the button.
+Onto an existing collection the two are merged rather than one silently winning:
+the app counts the overlap by the natural key first, then asks whether to sum the
+quantities, keep one of each duplicate (the uploaded file's quantity wins), or
+replace outright. The merged result is written as a *new* timestamped CSV, so
+every export already in the directory survives untouched.
 
 **Statistics.** Totals, distributions by condition/type/attribute/archetype/set,
 acquisitions over time, and the long tail. Every chart says *which* count it is

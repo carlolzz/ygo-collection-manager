@@ -14,6 +14,7 @@ import type {
   FilterOptions,
   RefineJob,
   Stats,
+  UploadPreview,
   Valuation,
 } from "./types";
 
@@ -78,9 +79,23 @@ export const cancelRefinement = (id: string) =>
 export const analyzeDeck = (text: string) =>
   post<DeckAnalysis>("/deck/analyze", { text });
 
-export async function uploadCollection(file: File): Promise<CollectionStatus> {
+/** What to do with rows the loaded collection already has. */
+export type UploadMode = "replace" | "merge_sum" | "merge_keep";
+
+/** Ask what an export would do, without doing it. Changes nothing server-side. */
+export async function previewCollection(file: File): Promise<UploadPreview> {
   const form = new FormData();
   form.append("file", file);
+  return request<UploadPreview>("/collection/preview", { method: "POST", body: form });
+}
+
+export async function uploadCollection(
+  file: File,
+  mode: UploadMode = "replace",
+): Promise<CollectionStatus> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("mode", mode);
   return request<CollectionStatus>("/collection/upload", {
     method: "POST",
     body: form,

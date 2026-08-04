@@ -24,6 +24,7 @@ __all__ = [
     "FilterOptions",
     "CatalogueStatus",
     "CollectionStatus",
+    "UploadPreview",
     "MoneyOut",
     "ValuedRowOut",
     "ValuationOut",
@@ -61,6 +62,13 @@ class CardSummary(BaseModel):
     row_count: int = Field(description="How many collection rows matched.")
     printing_count: int = Field(description="Distinct non-empty set_codes matched.")
     first_acquired_at: datetime | None = None
+    languages: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Every distinct language owned, sorted. Free-form in the export, so "
+            "this is not an enum and may hold codes the scanner does not offer."
+        ),
+    )
 
 
 class CardPage(BaseModel):
@@ -269,6 +277,25 @@ class CollectionStatus(BaseModel):
     csv_path: str | None = None
     collection_rows: int = 0
     message: str
+
+
+class UploadPreview(BaseModel):
+    """What an export would do to the loaded collection, before it does it.
+
+    Rows are counted by the natural key — printing, condition, edition and
+    language — so "already there" means the same card in the same state, not
+    merely the same card.
+    """
+
+    has_collection: bool = Field(
+        description="False when nothing is loaded; the upload then simply loads this file."
+    )
+    current_rows: int = 0
+    incoming_rows: int = Field(default=0, description="Rows in the uploaded file.")
+    overlapping_rows: int = Field(
+        default=0, description="Uploaded rows the collection already has."
+    )
+    new_rows: int = Field(default=0, description="Uploaded rows the collection does not have.")
 
 
 class CatalogueStatus(BaseModel):

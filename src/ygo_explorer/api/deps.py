@@ -15,6 +15,10 @@ from ..pricing.snapshots import SnapshotStore
 
 __all__ = ["Database", "get_db", "get_store", "get_jobs"]
 
+#: Distinguishes "re-open what you had" from an explicit "go back to whichever
+#: export in the data directory is newest", which None now means.
+_KEEP: object = object()
+
 # The empty collection, so every query still parses and returns zero rows rather
 # than the app refusing to start. Matches what open_collection produces.
 _EMPTY_COLLECTION = """
@@ -71,10 +75,24 @@ class Database:
     def cursor(self) -> duckdb.DuckDBPyConnection:
         return self._con.cursor()
 
-    def reload(self, csv_path: Path | str | None = None) -> None:
-        """Re-read the export and re-attach the catalogue, e.g. after a refresh."""
-        if csv_path is not None:
-            self._requested = csv_path
+    @property
+    def requested(self) -> Path | str | None:
+        """The explicitly requested export, if any — what ``reload()`` re-opens.
+
+        Read before an upload so a failed one can put the handle back exactly
+        as it was, rather than leaving the app on an empty collection.
+        """
+        return self._requested
+
+    def reload(self, csv_path: Path | str | None | object = _KEEP) -> None:
+        """Re-read the export and re-attach the catalogue, e.g. after a refresh.
+
+        The default re-opens whatever was requested before. Passing ``None``
+        explicitly means the opposite: go back to picking the newest export in
+        the data directory, which is how an upload is rolled back.
+        """
+        if csv_path is not _KEEP:
+            self._requested = csv_path  # type: ignore[assignment]
         self._con.close()
         self._open()
 

@@ -29,7 +29,13 @@ CARD_PROJECTION = """
     SUM(quantity)::BIGINT               AS total_copies,
     COUNT(*)::BIGINT                    AS row_count,
     COUNT(DISTINCT set_code)::BIGINT    AS printing_count,
-    min(created_at)                     AS first_acquired_at
+    min(created_at)                     AS first_acquired_at,
+    -- The one owned-row column here that is not functionally dependent on the
+    -- passcode: the same card is often held in several languages, so it is
+    -- collected rather than picked. Sorted for a stable order across requests.
+    COALESCE(list_sort(list_distinct(
+        list(language) FILTER (WHERE nullif(trim(language), '') IS NOT NULL)
+    )), []::VARCHAR[])                  AS languages
 """
 
 SUMMARY_FIELDS: tuple[str, ...] = (
@@ -49,6 +55,7 @@ SUMMARY_FIELDS: tuple[str, ...] = (
     "row_count",
     "printing_count",
     "first_acquired_at",
+    "languages",
 )
 
 

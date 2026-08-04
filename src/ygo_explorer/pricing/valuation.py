@@ -77,7 +77,7 @@ class Valuation:
     @property
     def caveat(self) -> str:
         parts = [
-            f"Estimate in {self.currency}.",
+            f"Estimate in {self.currency}",
             f"{self.per_printing_rows} row(s) priced for their specific printing, "
             f"{self.per_passcode_rows} priced per card (so rarity is not reflected)",
         ]

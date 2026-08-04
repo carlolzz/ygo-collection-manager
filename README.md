@@ -3,7 +3,7 @@
 A local, read-only web app for browsing, analysing and valuing a Yu-Gi-Oh card
 collection, and for checking a deck list against what you actually own.
 
-The collection is catalogued by a separate Flutter scanner app, which is the
+The collection is catalogued by a separate [Flutter scanner app](https://github.com/carlolzz/ygo-card-scanner), which is the
 single source of truth; this consumes its CSV export and never writes back to it.
 
 ---

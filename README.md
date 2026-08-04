@@ -10,8 +10,6 @@ single source of truth; this consumes its CSV export and never writes back to it
 
 > **Not a developer?** [**GETTING-STARTED.md**](GETTING-STARTED.md) walks through
 > installing Docker and running this, step by step, with no assumed knowledge.
-> [**README.txt**](README.txt) is the same in five steps, as plain text that
-> opens in Notepad.
 
 ## Running it with Docker
 

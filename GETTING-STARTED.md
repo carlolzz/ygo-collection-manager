@@ -22,7 +22,7 @@ never changes your collection file, it only reads it.
 
 ---
 
-## Step 1 — Install Docker Desktop
+## Step 1 - Install Docker Desktop
 
 Docker is a free tool that runs an app in a self-contained bundle, so you don't
 have to install anything else or configure anything.
@@ -45,7 +45,7 @@ running** indicator at the bottom left.
 
 ---
 
-## Step 2 — Make a folder for your collection
+## Step 2 - Make a folder for your collection
 
 Make a new folder somewhere you'll remember, your Desktop is fine. Call it
 something like `ygo-explorer`.
@@ -65,7 +65,7 @@ through a button in the browser.
 
 ---
 
-## Step 3 — Open a terminal in that folder
+## Step 3 - Open a terminal in that folder
 
 A terminal is a window where you type commands. You only need one.
 
@@ -80,7 +80,7 @@ type `cd ` with a space, then drag the folder onto the window and press Enter.)
 
 ---
 
-## Step 4 — Start the app
+## Step 4 - Start the app
 
 Copy this line, paste it into the terminal, and press Enter:
 
@@ -113,7 +113,7 @@ Leave that terminal window open. Closing it stops the app.
 
 ---
 
-## Step 5 — Open it in your browser
+## Step 5 - Open it in your browser
 
 Go to **<http://localhost:8000>**
 

@@ -14,5 +14,4 @@ frontend/node_modules/
 frontend/dist/
 *.tsbuildinfo
 initial_prompt.md
-/README.txt
 README.txt

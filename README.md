@@ -6,8 +6,6 @@ collection, and for checking a deck list against what you actually own.
 The collection is catalogued by a separate Flutter scanner app, which is the
 single source of truth; this consumes its CSV export and never writes back to it.
 
-The full brief is in [initial_prompt.md](initial_prompt.md).
-
 ---
 
 > **Not a developer?** [**GETTING-STARTED.md**](GETTING-STARTED.md) walks through

@@ -36,7 +36,7 @@ export default function ValuationPage() {
             <h1>Collection value</h1>
             <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
               Priced from {sourceFor(source).label} in{" "}
-              {sourceFor(source).currency}, out of the cached card dump — so this
+              {sourceFor(source).currency}, out of the cached card dump, so this
               costs no network requests at all and runs locally in a fraction of
               a second. Change the marketplace in the top bar.
             </p>
@@ -209,7 +209,7 @@ function RefinementPanel({ usable }: { usable: boolean }) {
           </div>
           <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
             Looks up printing-specific prices the bulk dump is missing. This is
-            the only part of the app that makes per-card requests — rate limited,
+            the only part of the app that makes per-card requests: rate limited,
             resumable, and safe to cancel.
           </p>
         </div>

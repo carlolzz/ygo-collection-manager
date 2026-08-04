@@ -117,7 +117,7 @@ export default function CardPage() {
 
       <div className="panel">
         <div className="panel-title">
-          What you own — {card.total_copies} copies by condition, edition and language
+          What you own: {card.total_copies} copies by condition, edition and language
         </div>
         <div className="table-wrap">
           <table>

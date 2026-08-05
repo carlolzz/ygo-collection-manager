@@ -28,7 +28,7 @@ Then open <http://localhost:8000>. Without a compose file:
 docker run -p 8000:8000 -v "$PWD/data:/data" charliegordonmouse/ygo-explorer
 ```
 
-If you have no CSV to hand, start it anyway: the app comes up with an empty
+If you have no CSV to hand, start it anyway; the app comes up with an empty
 collection and offers an upload button.
 
 > **Git Bash on Windows**: it rewrites `-v /c/…:/data` into nonsense and Docker

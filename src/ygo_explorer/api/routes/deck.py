@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from ...config import DEFAULT_PRICE_FIELD
 from ...deck.compare import analyze_deck
+from ...deck.export import missing_text, missing_ydke
 from ...deck.parse import ParseError, parse_deck
 from ..deps import Database, get_db
 from ..models import DeckAnalysisOut, DeckCardOut, MoneyOut
@@ -57,6 +58,8 @@ def analyze(
         estimated_cost=MoneyOut.of(analysis.estimated_cost),
         caveat=analysis.caveat,
         unresolved=analysis.unresolved,
+        missing_ydke=missing_ydke(analysis.cards),
+        missing_text=missing_text(analysis.cards),
         cards=[
             DeckCardOut(
                 passcode=c.passcode,

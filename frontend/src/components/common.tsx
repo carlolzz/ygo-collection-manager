@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import type { Money } from "../types";
 
 export const CHART_COLORS = [
@@ -26,6 +27,43 @@ export function Loading({ what }: { what: string }) {
 
 export function ErrorNotice({ message }: { message: string }) {
   return <div className="notice error">{message}</div>;
+}
+
+/** Copies text to the clipboard and says so for a moment. */
+export function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  async function copy() {
+    // navigator.clipboard needs a secure context, which a container reached at
+    // a plain-http LAN address is not. The old execCommand still works there.
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const scratch = document.createElement("textarea");
+      scratch.value = text;
+      scratch.style.position = "fixed";
+      scratch.style.opacity = "0";
+      document.body.appendChild(scratch);
+      scratch.select();
+      try {
+        document.execCommand("copy");
+      } finally {
+        document.body.removeChild(scratch);
+      }
+    }
+    setCopied(true);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <button className="subtle" onClick={copy} disabled={!text}>
+      {copied ? "Copied" : label}
+    </button>
+  );
 }
 
 export function formatCondition(condition: string) {

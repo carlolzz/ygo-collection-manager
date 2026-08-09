@@ -267,6 +267,14 @@ class DeckAnalysisOut(BaseModel):
         default_factory=list,
         description="Lines that matched no card. Reported, never silently dropped.",
     )
+    missing_ydke: str = Field(
+        default="",
+        description="The missing copies as a ydke:// code. Empty if nothing is missing.",
+    )
+    missing_text: str = Field(
+        default="",
+        description="The missing copies as a zone-grouped plaintext list.",
+    )
     cards: list[DeckCardOut]
 
 

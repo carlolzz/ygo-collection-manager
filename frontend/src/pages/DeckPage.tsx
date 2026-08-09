@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { analyzeDeck } from "../api";
-import { Amount, ErrorNotice } from "../components/common";
+import { Amount, CopyButton, ErrorNotice } from "../components/common";
 import { useAction } from "../hooks";
 import { sourceFor, usePriceSource } from "../priceSource";
 
@@ -105,6 +105,29 @@ export default function DeckPage() {
             )}
           </div>
 
+          {result.total_missing > 0 && (
+            <div className="panel">
+              <div className="panel-title">Cards you still need</div>
+              <ExportBlock
+                label="As a ydke:// code"
+                hint="Paste into EDOPro, or back into the box above."
+                value={result.missing_ydke}
+                rows={2}
+              />
+              <ExportBlock
+                label="As a list"
+                hint="One line per card, grouped by deck."
+                value={result.missing_text}
+                rows={Math.min(16, result.missing_text.split("\n").length)}
+              />
+              <p className="muted" style={{ fontSize: "0.78rem", margin: "0.6rem 0 0" }}>
+                Only the copies you are short of are listed, not the whole deck.
+                {result.unresolved.length > 0 &&
+                  " Lines that matched no card are not in it either."}
+              </p>
+            </div>
+          )}
+
           <div className="panel">
             <div className="panel-title">
               Card by card · detected format: {result.source_format}
@@ -159,6 +182,30 @@ export default function DeckPage() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function ExportBlock({
+  label,
+  hint,
+  value,
+  rows,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  rows: number;
+}) {
+  return (
+    <div className="export-block">
+      <div className="export-head">
+        <span>
+          {label} <span className="muted">· {hint}</span>
+        </span>
+        <CopyButton text={value} />
+      </div>
+      <textarea value={value} rows={rows} readOnly spellCheck={false} />
     </div>
   );
 }

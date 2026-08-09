@@ -8,7 +8,8 @@ from pathlib import Path
 import pytest
 
 from ygo_explorer.config import DEFAULT_PRICE_CURRENCY
-from ygo_explorer.deck.compare import analyze_deck
+from ygo_explorer.deck.compare import DeckCard, analyze_deck
+from ygo_explorer.deck.export import missing_by_zone, missing_text, missing_ydke
 from ygo_explorer.deck.parse import ParseError, parse_deck
 from ygo_explorer.deck.resolve import resolve_deck
 from ygo_explorer.money import Money
@@ -246,3 +247,106 @@ def test_owning_nothing_means_the_whole_deck_is_missing(catalogue_con):
     )
     nibiru = next(c for c in analysis.cards if c.card_id == "27204311")
     assert (nibiru.needed, nibiru.owned, nibiru.missing) == (3, 2, 1)
+
+
+# --- exporting the shortfall --------------------------------------------------
+
+
+def _card(passcode, name, zones, owned):
+    needed = sum(zones.values())
+    return DeckCard(
+        card_id=passcode,
+        passcode=passcode,
+        name=name,
+        needed=needed,
+        owned=owned,
+        missing=max(0, needed - owned),
+        zones={"main": 0, "extra": 0, "side": 0} | zones,
+        unit_price=None,
+        subtotal=None,
+    )
+
+
+def test_owned_copies_are_spent_main_first():
+    """2 main + 1 side with one owned is short one main and one side."""
+    assert missing_by_zone({"main": 2, "extra": 0, "side": 1}, 1) == {
+        "main": 1,
+        "extra": 0,
+        "side": 1,
+    }
+
+
+def test_the_zone_shortfalls_sum_to_the_missing_count():
+    card = _card("46986414", "Dark Magician", {"main": 3, "side": 1}, owned=1)
+    assert sum(missing_by_zone(card.zones, card.owned).values()) == card.missing
+
+
+def test_spare_copies_do_not_make_a_zone_negative():
+    assert missing_by_zone({"main": 1, "extra": 0, "side": 0}, 9) == {
+        "main": 0,
+        "extra": 0,
+        "side": 0,
+    }
+
+
+def test_the_exported_ydke_reads_back_as_the_shortfall():
+    cards = [
+        _card("46986414", "Dark Magician", {"main": 3, "side": 1}, owned=1),
+        _card("8736823", "Test Fusion", {"extra": 2}, owned=0),
+    ]
+    deck = parse_deck(missing_ydke(cards))
+    assert deck.source_format == "ydke"
+    assert deck.zone_counts() == {"main": 2, "extra": 2, "side": 1}
+
+
+def test_the_exported_list_reads_back_as_the_shortfall():
+    cards = [
+        _card("46986414", "Dark Magician", {"main": 3, "side": 1}, owned=1),
+        _card("8736823", "Test Fusion", {"extra": 2}, owned=0),
+    ]
+    deck = parse_deck(missing_text(cards))
+    assert deck.source_format == "plaintext"
+    assert deck.zone_counts() == {"main": 2, "extra": 2, "side": 1}
+    assert {(e.zone, e.name, e.quantity) for e in deck.entries} == {
+        ("main", "Dark Magician", 2),
+        ("extra", "Test Fusion", 2),
+        ("side", "Dark Magician", 1),
+    }
+
+
+def test_a_zone_with_nothing_missing_gets_no_heading():
+    text = missing_text([_card("4041", "Mystical Elf", {"main": 2}, owned=1)])
+    assert text == "Main Deck:\n1 Mystical Elf"
+
+
+def test_the_list_is_alphabetical_within_a_zone():
+    cards = [
+        _card("2", "Zombie Warrior", {"main": 1}, owned=0),
+        _card("3", "aardvark token", {"main": 1}, owned=0),
+        _card("4", "Mystical Elf", {"main": 3}, owned=0),
+    ]
+    names = [line.split(" ", 1)[1] for line in missing_text(cards).splitlines()[1:]]
+    assert names == ["aardvark token", "Mystical Elf", "Zombie Warrior"]
+
+
+def test_a_fully_owned_deck_exports_nothing():
+    cards = [_card("46986414", "Dark Magician", {"main": 3}, owned=6)]
+    assert missing_ydke(cards) == ""
+    assert missing_text(cards) == ""
+
+
+def test_a_passcode_ydke_cannot_carry_still_reaches_the_list():
+    """One unencodable passcode should not cost the user the whole code."""
+    cards = [
+        _card("not-a-passcode", "Odd One Out", {"main": 1}, owned=0),
+        _card("4041", "Mystical Elf", {"main": 1}, owned=0),
+    ]
+    assert parse_deck(missing_ydke(cards)).zone_counts() == {"main": 1, "extra": 0, "side": 0}
+    assert "Odd One Out" in missing_text(cards)
+
+
+def test_a_real_analysis_round_trips_to_the_same_shortfall(catalogue_con):
+    """The exported list, fed back in, reports needing exactly what was missing."""
+    analysis = analyze_deck(catalogue_con, parse_deck(YDKE))
+    again = analyze_deck(catalogue_con, parse_deck(missing_text(analysis.cards)))
+    assert again.total_needed == analysis.total_missing

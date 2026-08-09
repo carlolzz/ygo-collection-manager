@@ -214,5 +214,7 @@ export interface DeckAnalysis {
   estimated_cost: Money | null;
   caveat: string;
   unresolved: string[];
+  missing_ydke: string;
+  missing_text: string;
   cards: DeckCard[];
 }

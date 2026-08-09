@@ -119,7 +119,8 @@ how many rows were priced per-printing versus per-passcode, how many could not b
 priced, the currency, and how old the data is.
 
 **Deck check.** Paste a `ydke://` code, a `.ydk` file or a plain typed list; get
-what you are missing and roughly what it would cost.
+what you are missing and roughly what it would cost, plus the shortfall written
+back out as a copyable `ydke://` code and a copyable text list.
 
 **One price source, chosen in the top bar** and remembered between visits. It
 governs the valuation, the deck check and the per-card figure alike, so two
@@ -142,6 +143,10 @@ the pricing notes below.
 - **Spare copies are not progress.** Owning six of a card a deck runs three of
   contributes three.
 - **A line matching no card is reported, never silently dropped.**
+- **The shortfall comes back out in both formats.** Owned copies are spent main
+  first, then extra, then side, so the export says which zone each missing copy
+  belongs to. Both forms parse back in, so pasting either one returns the same
+  shortfall.
 
 ---
 

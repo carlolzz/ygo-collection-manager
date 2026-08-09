@@ -153,6 +153,24 @@ def test_deck_reports_missing_counts_and_a_cost(client):
     assert "playable copy" in body["caveat"]
 
 
+def test_deck_returns_the_shortfall_in_both_copyable_forms(client):
+    body = client.post("/api/deck/analyze", json={"text": YDKE}).json()
+    assert body["missing_ydke"].startswith("ydke://")
+    # The fixture is short one Mystical Elf, so it has to be in both.
+    assert "Mystical Elf" in body["missing_text"]
+    assert body["missing_text"].startswith("Main Deck:")
+
+
+def test_a_deck_that_needs_nothing_exports_nothing(client):
+    """The fixture owns six Dark Magicians, so a three-of leaves no shortfall."""
+    body = client.post(
+        "/api/deck/analyze", json={"text": "Main Deck:\n3 Dark Magician\n"}
+    ).json()
+    assert body["total_missing"] == 0
+    assert body["missing_ydke"] == ""
+    assert body["missing_text"] == ""
+
+
 def test_deck_lists_unresolved_lines_rather_than_dropping_them(client):
     body = client.post(
         "/api/deck/analyze", json={"text": "Main Deck:\n3 Not A Real Card\n"}

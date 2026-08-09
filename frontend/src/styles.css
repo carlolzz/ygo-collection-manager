@@ -23,6 +23,10 @@
   --chart-4: #a8558f;
   --chart-5: #5c7fb8;
   --chart-6: #7a8a3d;
+
+  /* The dropdown chevron. A data URI cannot read a custom property, so the
+     stroke is --text-dim's value written out, once per theme. */
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.75 6 6.25 11 1.75' fill='none' stroke='%2362626d' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,6 +52,8 @@
     --chart-4: #d087b8;
     --chart-5: #86a8db;
     --chart-6: #a7b866;
+
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.75 6 6.25 11 1.75' fill='none' stroke='%23a3a3b0' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
 }
 
@@ -95,6 +101,8 @@ h3 { font-size: 0.95rem; }
 .nav-actions { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .nav-status { font-size: 0.8rem; color: var(--text-faint); }
 .nav-actions button, .nav-actions select { padding: 0.25rem 0.6rem; font-size: 0.8rem; width: auto; }
+/* Tighter than the page selects, but the chevron still needs its room. */
+.nav-actions select { padding-right: 1.6rem; background-position: right 0.55rem center; }
 .upload-error { font-size: 0.78rem; padding: 0.3rem 0.55rem; }
 
 /* --- surfaces ------------------------------------------------------------- */
@@ -168,6 +176,18 @@ input, select, textarea {
   border-radius: 8px;
   padding: 0.4rem 0.6rem;
   width: 100%;
+}
+/* The native arrow sits hard against the right edge and ignores our palette.
+   Drawing our own is the only way to inset it. This rule has to follow the one
+   above: that `background` shorthand would otherwise reset the image. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: var(--select-arrow);
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 0.7rem;
+  padding-right: 1.9rem;
 }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 textarea { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.85rem; resize: vertical; }
@@ -340,6 +360,18 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .big-money { font-size: 2.4rem; font-weight: 680; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .currency-tag { font-size: 0.9rem; color: var(--text-dim); font-weight: 550; margin-left: 0.35rem; }
+
+/* A read-only box with its copy button on the same line as its label. */
+.export-block + .export-block { margin-top: 0.9rem; }
+.export-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 550;
+}
 
 .chart { width: 100%; height: 260px; }
 

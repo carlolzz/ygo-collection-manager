@@ -116,12 +116,16 @@ export async function uploadCollection(
 /** Search the cached card data — every card, not only the owned ones.
  *
  * Served from the local dump, so this is free to call on every keystroke: it is
- * a parquet scan, not a request to YGOPRODeck. A name is matched in English and
- * in every cached language; all digits is matched as a passcode.
+ * a parquet scan, not a request to YGOPRODeck.
+ *
+ * `language` scopes the *name* search to that language and nothing else, so a
+ * card the localized dump does not cover is not findable while it is set. All
+ * digits is matched as a passcode, which has no language to scope.
  */
-export const searchCatalogue = (q: string, limit = 25) =>
+export const searchCatalogue = (q: string, language?: string, limit = 25) =>
   request<CatalogueCard[]>(
-    `/catalogue/cards?q=${encodeURIComponent(q)}&limit=${limit}`,
+    `/catalogue/cards?q=${encodeURIComponent(q)}&limit=${limit}` +
+      (language ? `&language=${encodeURIComponent(language)}` : ""),
   );
 
 /** Every printing the card data lists for a card, with the owned ones flagged. */

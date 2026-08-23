@@ -138,8 +138,8 @@ class CatalogueCard(BaseModel):
         default=None,
         description=(
             "The name that matched, when it was not the English one above — so a "
-            "German or Italian search can show what it found. Never written to "
-            "the collection: a row's name is always the English one."
+            "localized search can show what it found. Never written to the "
+            "collection: a row's name is always the English one."
         ),
     )
     matched_language: str | None = Field(
@@ -470,8 +470,17 @@ class CatalogueStatus(BaseModel):
     languages: list[str] = Field(
         default_factory=list,
         description=(
-            "Languages the card picker can be searched in besides English. Empty "
-            "means only English names are cached."
+            "Languages whose name index is actually cached, besides English. "
+            "Empty means only English names are on disk."
+        ),
+    )
+    search_languages: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Languages the picker offers to search in, English first. A language "
+            "listed here but absent from `languages` is configured but not "
+            "downloaded: offer it as unavailable rather than let it be selected "
+            "and silently match nothing."
         ),
     )
     catalogue_cards: int

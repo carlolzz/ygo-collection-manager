@@ -21,6 +21,47 @@ export const CONDITIONS = [
   "POOR",
 ] as const;
 
+/** Cardmarket's own abbreviations, from help.cardmarket.com/en/CardCondition.
+ *
+ * Kept beside the grade list rather than in a display module: the two have to
+ * cover exactly the same set, and a grade added to one and not the other is a
+ * badge reading `LIGHT_PLAYED` in a box sized for two letters.
+ */
+export const CONDITION_ABBR: Record<string, string> = {
+  MINT: "M",
+  NEAR_MINT: "NM",
+  EXCELLENT: "EX",
+  GOOD: "GD",
+  LIGHT_PLAYED: "LP",
+  PLAYED: "PL",
+  POOR: "PO",
+};
+
+/** A grade as Cardmarket shows it: a small colour-coded rectangle.
+ *
+ * The colour is the information — a green-to-red ramp read at a glance down a
+ * column — so the full name goes in the title and the accessible label rather
+ * than being spelled out in a cell it would dominate.
+ *
+ * An unlisted grade falls back to a neutral badge carrying its raw code, for
+ * the reason LanguageFlag falls back to a bare language code: the column is
+ * whatever the CSV says it is, and an unrecognized value must not vanish.
+ */
+export function ConditionBadge({ condition }: { condition: string }) {
+  const abbr: string | undefined = CONDITION_ABBR[condition];
+  // formatCondition lowercases for prose; a tooltip reads as a proper name.
+  const name = formatCondition(condition).replace(/\b\w/g, (c) => c.toUpperCase());
+  return (
+    <span
+      className={abbr ? `cond-badge cond-${abbr.toLowerCase()}` : "cond-badge"}
+      title={name}
+    >
+      {abbr ?? condition}
+      <span className="sr-only"> {name}</span>
+    </span>
+  );
+}
+
 export const EDITIONS: { value: string; label: string }[] = [
   { value: "FIRST", label: "1st Edition" },
   { value: "UNLIMITED", label: "Unlimited" },

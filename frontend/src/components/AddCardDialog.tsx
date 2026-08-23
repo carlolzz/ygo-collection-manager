@@ -1,23 +1,30 @@
 /** Entering cards by hand: find the card, then describe each copy.
  *
  * The shape of this follows the scanner app's add flow — search, then printing,
- * then the details, with Near Mint / Unlimited / EN as the defaults — with one
+ * then the details, with Near Mint / Unlimited as the defaults — with one
  * difference that is the whole point of it. The scanner logs one copy at a time
  * from a camera, so a quantity there means "this many identical copies". Here
  * the copies stepper opens a *row per copy*, because the case that drives
  * someone to type instead of scan is a stack of the same card that is not the
- * same card at all: one German Common, one Italian Rare first edition, one
+ * same card at all: one Italian Common, one Italian Rare first edition, one
  * English Ultra Rare.
  *
  * Rows that do end up identical are folded back into one on the server, and the
  * footer says so before the save, so the stepper never has to be understood as
  * anything other than "how many copies am I adding".
+ *
+ * Only cards the cached dump knows can be added. A passcode and a name typed
+ * freehand were once accepted here, and what that mostly produced was a typo
+ * living permanently in the ledger with no card data any refresh could ever
+ * attach to it.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getCataloguePrintings, searchCatalogue } from "../api";
+import { getCatalogueStatus, getCataloguePrintings, searchCatalogue } from "../api";
+import { useAsync } from "../hooks";
 import type { CatalogueCard, CataloguePrinting, NewEntry } from "../types";
 import { ErrorNotice } from "./common";
+import LanguageFlag, { languageName } from "./LanguageFlag";
 import {
   CONDITIONS,
   ConditionSelect,
@@ -74,29 +81,27 @@ interface Copy {
   notes: string;
 }
 
-/** The card being added, whether the catalogue knows it or not. */
+/** The card being added, as the catalogue has it. */
 interface Chosen {
   passcode: string;
   name: string;
-  /** Empty when the card was typed by hand — there is nothing to pick from. */
   printings: CataloguePrinting[];
-  known: boolean;
 }
 
 /** A row before the folding decides how many copies it stands for. */
 type Described = Omit<NewEntry, "quantity">;
 
 /** Copies to rows: identical ones folded, quantities summed. What the server does. */
-function toRows(chosen: Chosen, copies: Copy[], manual: ManualSet): NewEntry[] {
+function toRows(chosen: Chosen, copies: Copy[]): NewEntry[] {
   const rows = new Map<string, NewEntry>();
   for (const copy of copies) {
     const printing = chosen.printings[copy.printing];
     const row: Described = {
       passcode: chosen.passcode,
       name: chosen.name,
-      set_code: (printing ? printing.set_code : manual.set_code) || null,
-      set_name: (printing ? printing.set_name : manual.set_name) || null,
-      rarity: (printing ? printing.set_rarity : manual.rarity) || null,
+      set_code: printing?.set_code || null,
+      set_name: printing?.set_name || null,
+      rarity: printing?.set_rarity || null,
       condition: copy.condition,
       edition: copy.edition,
       language: copy.language.trim().toUpperCase(),
@@ -109,14 +114,6 @@ function toRows(chosen: Chosen, copies: Copy[], manual: ManualSet): NewEntry[] {
   }
   return [...rows.values()];
 }
-
-interface ManualSet {
-  set_code: string;
-  set_name: string;
-  rarity: string;
-}
-
-const NO_SET: ManualSet = { set_code: "", set_name: "", rarity: "" };
 
 export default function AddCardDialog({
   busy,
@@ -135,20 +132,42 @@ export default function AddCardDialog({
   const [searching, setSearching] = useState(false);
 
   const [chosen, setChosen] = useState<Chosen | null>(null);
-  const [manual, setManual] = useState<ManualSet>(NO_SET);
-  const [byHand, setByHand] = useState(false);
-  const [handPasscode, setHandPasscode] = useState("");
-  const [handName, setHandName] = useState("");
 
   const defaults = useRef(loadDefaults());
   const [copies, setCopies] = useState<Copy[]>([]);
   const [showNotes, setShowNotes] = useState(false);
 
+  // Which language's names to search, which is also the language the copies
+  // start in — someone entering an Italian card is holding an Italian card.
+  const [language, setLanguage] = useState(defaults.current.language);
+  const catalogue = useAsync(getCatalogueStatus, []);
+  // What the picker may offer, and which of those actually has names on disk.
+  // A configured language whose index was never downloaded matches nothing at
+  // all, so it is offered disabled rather than as a search that finds nothing.
+  const offered = useMemo(
+    () => catalogue.data?.search_languages ?? ["EN"],
+    [catalogue.data],
+  );
+  const cached = useMemo(
+    () => new Set(["EN", ...(catalogue.data?.languages ?? [])]),
+    [catalogue.data],
+  );
+  const known = catalogue.data !== null;
+  const available = cached.has(language);
+
+  // A stored default of, say, JP is a perfectly good language to *own* a card
+  // in and no language to search in — and neither is one that is offered but
+  // never downloaded. Either way, open on a search that works rather than on a
+  // dead one the user has to notice and undo.
+  useEffect(() => {
+    if (known && !(offered.includes(language) && cached.has(language))) setLanguage("EN");
+  }, [known, offered, cached, language]);
+
   // Debounced, but only to spare re-renders: the search is a local parquet scan,
   // not a request to YGOPRODeck, so there is no rate limit to respect here.
   useEffect(() => {
     const text = query.trim();
-    if (!text) {
+    if (!text || !available) {
       setResults(null);
       setSearchError(null);
       return;
@@ -156,7 +175,7 @@ export default function AddCardDialog({
     let cancelled = false;
     const timer = setTimeout(() => {
       setSearching(true);
-      searchCatalogue(text)
+      searchCatalogue(text, language)
         .then((found) => !cancelled && (setResults(found), setSearchError(null)))
         .catch((e: Error) => !cancelled && setSearchError(e.message))
         .finally(() => !cancelled && setSearching(false));
@@ -165,7 +184,7 @@ export default function AddCardDialog({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, language, available]);
 
   function firstCopy(printings: CataloguePrinting[]): Copy {
     return {
@@ -173,7 +192,9 @@ export default function AddCardDialog({
       // one-option decision mostly gets them to skip it, and a copy logged with
       // no set is the answer that cannot be recovered later.
       printing: printings.length === 1 ? 0 : -1,
-      ...defaults.current,
+      condition: defaults.current.condition,
+      edition: defaults.current.edition,
+      language,
       notes: "",
     };
   }
@@ -187,24 +208,13 @@ export default function AddCardDialog({
       setSearchError((e as Error).message);
       return;
     }
-    setManual(NO_SET);
-    setChosen({ passcode: card.passcode, name: card.name, printings, known: true });
+    setChosen({ passcode: card.passcode, name: card.name, printings });
     setCopies([firstCopy(printings)]);
-  }
-
-  function chooseByHand() {
-    const passcode = handPasscode.trim();
-    const name = handName.trim();
-    if (!/^[0-9]{1,8}$/.test(passcode) || !name) return;
-    setManual(NO_SET);
-    setChosen({ passcode, name, printings: [], known: false });
-    setCopies([firstCopy([])]);
   }
 
   function back() {
     setChosen(null);
     setCopies([]);
-    setManual(NO_SET);
   }
 
   function setCopyCount(next: number) {
@@ -227,10 +237,7 @@ export default function AddCardDialog({
     );
   }
 
-  const rows = useMemo(
-    () => (chosen ? toRows(chosen, copies, manual) : []),
-    [chosen, copies, manual],
-  );
+  const rows = useMemo(() => (chosen ? toRows(chosen, copies) : []), [chosen, copies]);
 
   function save() {
     if (!chosen || rows.length === 0) return;
@@ -256,28 +263,58 @@ export default function AddCardDialog({
 
         {chosen === null ? (
           <>
-            <label className="sr-only" htmlFor="add-card-search">
-              Card name or passcode
-            </label>
-            <input
-              id="add-card-search"
-              autoFocus
-              value={query}
-              placeholder="Card name or 8-digit passcode"
-              onChange={(e) => setQuery(e.target.value)}
-            />
+            <div className="search-bar">
+              <div className="search-bar-query">
+                <label className="sr-only" htmlFor="add-card-search">
+                  Card name or passcode
+                </label>
+                <input
+                  id="add-card-search"
+                  autoFocus
+                  value={query}
+                  placeholder="Card name or 8-digit passcode"
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+              <div className="search-bar-language lang-cell">
+                <label className="sr-only" htmlFor="add-card-language">
+                  Card language
+                </label>
+                <LanguageFlag code={language} />
+                <select
+                  id="add-card-language"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                >
+                  {offered.map((code) => (
+                    <option key={code} value={code} disabled={!cached.has(code)}>
+                      {code} · {languageName(code)}
+                      {cached.has(code) ? "" : " — not downloaded"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
             <p className="muted" style={{ fontSize: "0.76rem", margin: 0 }}>
-              Searchable in English, German and Italian. Nothing here reaches the
-              internet — it reads the card data already on disk.
+              Names are searched in {languageName(language)} only; a passcode works
+              whatever the language. New copies start in this language. Nothing here
+              reaches the internet — it reads the card data already on disk.
             </p>
 
             {searchError && <ErrorNotice message={searchError} />}
 
-            {results !== null && (
+            {known && !available && (
+              <div className="notice">
+                {languageName(language)} card names have not been downloaded yet.
+                Update the card data to search in {languageName(language)}.
+              </div>
+            )}
+
+            {available && results !== null && (
               <div className="picker-results">
                 {results.length === 0 && !searching && (
-                  <p className="muted" style={{ fontSize: "0.82rem" }}>
-                    No card matches that.
+                  <p className="muted picker-empty">
+                    No card matches that in {languageName(language)}.
                   </p>
                 )}
                 {results.map((card) => (
@@ -306,42 +343,6 @@ export default function AddCardDialog({
                 ))}
               </div>
             )}
-
-            <div className="by-hand">
-              {byHand ? (
-                <>
-                  <p className="muted" style={{ fontSize: "0.78rem", margin: 0 }}>
-                    A card the cached data has never heard of. It is added exactly
-                    as typed and shown with no card details until a refresh finds
-                    it.
-                  </p>
-                  <div className="by-hand-fields">
-                    <input
-                      value={handPasscode}
-                      inputMode="numeric"
-                      placeholder="Passcode"
-                      onChange={(e) => setHandPasscode(e.target.value)}
-                    />
-                    <input
-                      value={handName}
-                      placeholder="Card name"
-                      onChange={(e) => setHandName(e.target.value)}
-                    />
-                    <button
-                      className="subtle"
-                      disabled={!/^[0-9]{1,8}$/.test(handPasscode.trim()) || !handName.trim()}
-                      onClick={chooseByHand}
-                    >
-                      Use this
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <button className="subtle" onClick={() => setByHand(true)}>
-                  Not listed? Add it by hand
-                </button>
-              )}
-            </div>
           </>
         ) : (
           <>
@@ -354,26 +355,6 @@ export default function AddCardDialog({
                 Change card
               </button>
             </div>
-
-            {!chosen.known && (
-              <div className="by-hand-fields">
-                <input
-                  value={manual.set_code}
-                  placeholder="Set code"
-                  onChange={(e) => setManual({ ...manual, set_code: e.target.value })}
-                />
-                <input
-                  value={manual.set_name}
-                  placeholder="Set name"
-                  onChange={(e) => setManual({ ...manual, set_name: e.target.value })}
-                />
-                <input
-                  value={manual.rarity}
-                  placeholder="Rarity"
-                  onChange={(e) => setManual({ ...manual, rarity: e.target.value })}
-                />
-              </div>
-            )}
 
             <div className="between copies-bar">
               <span className="copies-stepper">
@@ -418,30 +399,23 @@ export default function AddCardDialog({
                     <tr key={index}>
                       <td className="muted num">{index + 1}</td>
                       <td>
-                        {chosen.known ? (
-                          <select
-                            value={copy.printing}
-                            disabled={busy}
-                            onChange={(e) =>
-                              editCopy(index, { printing: Number(e.target.value) })
-                            }
-                          >
-                            {/* An explicit answer, not a missing one: plenty of
-                                cards are held loose with no set worth recording. */}
-                            <option value={-1}>No set recorded</option>
-                            {chosen.printings.map((p, i) => (
-                              <option key={`${p.set_code}-${p.set_rarity}-${i}`} value={i}>
-                                {printingLabel(p)}
-                                {p.owned ? " ✓" : ""}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="muted">
-                            {[manual.set_code, manual.rarity].filter(Boolean).join(" · ") ||
-                              "No set recorded"}
-                          </span>
-                        )}
+                        <select
+                          value={copy.printing}
+                          disabled={busy}
+                          onChange={(e) =>
+                            editCopy(index, { printing: Number(e.target.value) })
+                          }
+                        >
+                          {/* An explicit answer, not a missing one: plenty of
+                              cards are held loose with no set worth recording. */}
+                          <option value={-1}>No set recorded</option>
+                          {chosen.printings.map((p, i) => (
+                            <option key={`${p.set_code}-${p.set_rarity}-${i}`} value={i}>
+                              {printingLabel(p)}
+                              {p.owned ? " ✓" : ""}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td>
                         <ConditionSelect

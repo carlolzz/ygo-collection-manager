@@ -52,7 +52,7 @@ collection and offers an upload button.
 |---|---|
 | `data/ygo_collection_*.csv` | your collection; the newest one is loaded, older ones are kept |
 | `data/cache/cardinfo.json` | the YGOPRODeck bulk dump, ~21 MB, fetched on request |
-| `data/cache/cardinfo.{de,it}.json` | the German and Italian name indexes, ~19 MB each |
+| `data/cache/cardinfo.it.json` | the Italian name index, ~19 MB |
 | `data/cache/*.parquet` | derived card, printing, name and price tables |
 | `data/cache/images/` | card art, downloaded once per card |
 | `data/cache/price_snapshots.parquet` | every price ever fetched, append-only |
@@ -84,9 +84,9 @@ Two sources, joined on the passcode:
   *new* timestamped file; no file already in the directory is ever modified.
 - **YGOPRODeck's bulk `cardinfo.php` dump is the card catalogue**: type,
   attribute, race, atk/def/level, archetype, text, image URLs *and prices*. One
-  request covers every card, cached on disk, refetched only when asked. Two more
-  requests fetch the German and Italian name indexes, which exist purely so the
-  card picker can be searched in them.
+  request covers every card, cached on disk, refetched only when asked. One more
+  request fetches the Italian name index, which exists purely so the card picker
+  can be searched in it.
 
 A row present in one and absent from the other is displayed, never dropped.
 
@@ -115,14 +115,16 @@ search folds NFKD on both sides: `Necrovalley` finds `Nécrovalley`. Each tile
 carries the flags of the languages it is held in, drawn as inline SVG rather
 than emoji because Windows ships no flag glyphs.
 
-**Add a card by hand.** Search by name or by the 8-digit passcode against the
-card data already on disk — no network request, and searchable in **English,
-German and Italian**, so a card held as *Kartenkavallerist* is found by that
-name and stored under its English one. Then say how many copies, and get **one
-row per copy**: each with its own printing, condition, edition and language. The
-case this exists for is a stack that is not really a stack — one German Common
-Unlimited, one Italian Rare 1st Edition, one English Ultra Rare, entered in a
-single dialog. Rows that do agree on all four are folded into one with the
+**Add a card by hand.** Pick the card's language, then search by name or by the
+8-digit passcode against the card data already on disk — no network request. The
+name search is scoped to the chosen language, so a card held as *Mago Nero* is
+found by that name and stored under its English one, and new copies start in
+that language. Only cards the catalogue knows can be added: a passcode and a
+name typed freehand would put a typo in the ledger that no later refresh could
+ever resolve. Then say how many copies, and get **one row per copy**: each with
+its own printing, condition, edition and language. The case this exists for is a
+stack that is not really a stack — one Italian Common Unlimited, one Italian
+Rare 1st Edition, one English Ultra Rare, entered in a single dialog. Rows that do agree on all four are folded into one with the
 quantities summed, the dialog says so before you save, and a row you already own
 is added to rather than repeated. Rarity is not its own field: you pick a
 printing and the rarity comes with it, because YGOPRODeck's ~90 free-form rarity
@@ -256,8 +258,11 @@ save and needs no code.
 Cardmarket and TCGplayer are credential-gated stubs that raise a clear
 `CredentialsRequired`, per the brief.
 
-Localized names cover German and Italian, set in `CATALOGUE_LANGUAGES` in
-`config.py`. YGOPRODeck also publishes French and Portuguese; each one added is
-another ~19 MB in the mount and another request on every refresh. They are an
-index for *finding* a card and never a name a card is stored under — the ledger's
-`name` column has to keep agreeing with the scanner's.
+Localized names cover Italian, set in `CATALOGUE_LANGUAGES` in `config.py`.
+YGOPRODeck also publishes French, German and Portuguese; each one added is
+another ~19 MB in the mount, another request on every refresh, and another entry
+in the picker's language dropdown. They are an index for *finding* a card and
+never a name a card is stored under — the ledger's `name` column has to keep
+agreeing with the scanner's. A cache fetched before a language was configured has
+no names for it; the card-data banner says so and offers the forced refresh that
+downloads them.

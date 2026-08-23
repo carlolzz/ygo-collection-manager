@@ -16,6 +16,7 @@ from ygo_explorer.catalogue.dump import (
     read_dump,
 )
 from ygo_explorer.catalogue.normalize import (
+    card_names_rows,
     cards_rows,
     normalize_dump,
     passcode_key,
@@ -206,6 +207,32 @@ def test_owned_printing_joins_to_its_catalogue_printing(con):
     assert row[0] == "SDY-006"
     assert row[1] == "Ultra Rare"
     assert str(row[2]) == "9.96"
+
+
+# --- the name index ----------------------------------------------------------
+
+
+def test_a_localized_name_that_echoes_the_english_one_still_gets_its_own_row():
+    """The row carries no new spelling, but it is what makes the card findable.
+
+    Under a language-scoped search the query is ``language = 'IT'``, so a card
+    whose Italian name was never translated would vanish entirely if this row
+    were dropped as a duplicate of the English one.
+    """
+    cards = [{"id": 1, "name": "Nibiru"}]
+    rows = card_names_rows(cards, {"IT": [{"id": 1, "name": "Nibiru"}]})
+
+    assert sorted(r["language"] for r in rows) == ["EN", "IT"]
+    assert {r["name_folded"] for r in rows} == {"nibiru"}
+
+
+def test_one_language_repeating_a_name_is_still_deduplicated():
+    """Within a language there is nothing to gain from the second row."""
+    rows = card_names_rows(
+        [{"id": 1, "name": "Nibiru"}],
+        {"IT": [{"id": 1, "name": "Nibiru"}, {"id": 1, "name": "NIBIRU"}]},
+    )
+    assert len(rows) == 2
 
 
 # --- working without a dump --------------------------------------------------

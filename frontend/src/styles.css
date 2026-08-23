@@ -100,14 +100,17 @@ h3 { font-size: 0.95rem; }
 .nav-links a.active { background: var(--accent-soft); color: var(--accent); }
 .nav-actions { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .nav-status { font-size: 0.8rem; color: var(--text-faint); }
+/* Full size, not shrunk to fit: these three are the most-clicked controls in
+   the app, and they were the smallest thing on the page. The select is sized
+   with them so the row still reads as one strip of controls. */
 .nav-actions button, .nav-actions .button, .nav-actions select {
-  padding: 0.25rem 0.6rem; font-size: 0.8rem; width: auto;
+  padding: 0.4rem 0.85rem; font-size: 0.88rem; width: auto;
 }
 /* The download is an anchor, so it needs the hover a button gets for free —
    and the underline every other link gets, taken back off. */
 .nav-actions .button:hover { border-color: var(--accent); text-decoration: none; }
-/* Tighter than the page selects, but the chevron still needs its room. */
-.nav-actions select { padding-right: 1.6rem; background-position: right 0.55rem center; }
+/* Room for the chevron on top of the padding above, not instead of it. */
+.nav-actions select { padding-right: 2rem; background-position: right 0.7rem center; }
 .upload-error { font-size: 0.78rem; padding: 0.3rem 0.55rem; }
 
 /* --- surfaces ------------------------------------------------------------- */
@@ -386,6 +389,14 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .panel.chart-panel { display: flex; flex-direction: column; }
 .chart-panel .chart { flex: 1; height: auto; min-height: 240px; }
 
+/* --- paging --------------------------------------------------------------- */
+
+.pager { display: flex; gap: 0.4rem; align-items: center; justify-content: center; flex-wrap: wrap; }
+.pager-count { font-variant-numeric: tabular-nums; padding: 0 0.4rem; }
+/* The jump arrows are an accelerator beside the labelled buttons, not a peer
+   of them: square, so the pair reads as one control rather than four. */
+.pager-jump { padding: 0.45rem 0.7rem; line-height: 1; }
+
 .pill {
   display: inline-block;
   font-size: 0.7rem;
@@ -396,6 +407,31 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .pill.owned { border-color: var(--good); color: var(--good); }
 .pill.missing { border-color: var(--bad); color: var(--bad); }
+
+/* --- condition badges ----------------------------------------------------- */
+
+/* Cardmarket's grade ramp, green to red, best to worst — the same ordering as
+   CONDITIONS in collection/schema.py. Defined once rather than per theme: the
+   badge paints its own background and carries its own white text, so it reads
+   identically light or dark, which is the point of a colour-coded grade. */
+.cond-badge {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 0.08rem 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  /* The fallback for a grade the list has never heard of. */
+  background: var(--text-faint);
+}
+.cond-badge.cond-m  { background: #1f8a3b; }
+.cond-badge.cond-nm { background: #4aa72e; }
+.cond-badge.cond-ex { background: #7d9e0d; }
+.cond-badge.cond-gd { background: #c39408; }
+.cond-badge.cond-lp { background: #e07b18; }
+.cond-badge.cond-pl { background: #cf5520; }
+.cond-badge.cond-po { background: #b8362c; }
 
 .progress-track { height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
 .progress-fill { height: 100%; background: var(--accent); transition: width 0.2s; }
@@ -461,6 +497,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    choices, and stacking those would hide the very comparison being made. */
 .modal-wide { width: min(52rem, 100%); }
 
+/* The query takes the room; the language is a fixed, narrow choice beside it. */
+.search-bar { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.search-bar-query { flex: 1 1 14rem; min-width: 12rem; }
+.search-bar-language { flex: 0 0 auto; }
+.search-bar-language select { width: auto; min-width: 9rem; }
+
 .picker-results {
   display: flex;
   flex-direction: column;
@@ -469,6 +511,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   border: 1px solid var(--border);
   border-radius: 8px;
 }
+/* The box has no padding of its own — .picker-hit brings its own — so the empty
+   state has to bring the same, or it sits on the border. */
+.picker-empty { margin: 0; padding: 0.5rem 0.7rem; font-size: 0.82rem; }
 .picker-hit {
   display: flex;
   flex-direction: column;
@@ -485,10 +530,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .picker-hit:hover:not(:disabled) { background: var(--accent-soft); border-color: transparent; }
 .picker-hit-name { font-size: 0.86rem; }
 .picker-hit-meta { font-size: 0.75rem; }
-
-.by-hand { display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-start; }
-.by-hand-fields { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-.by-hand-fields input { flex: 1 1 8rem; min-width: 7rem; }
 
 .chosen-card { font-size: 0.9rem; }
 .copies-bar { gap: 0.5rem; }

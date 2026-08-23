@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getCard, imageUrl, valueCard } from "../api";
-import { Amount, ErrorNotice, Loading, formatCondition } from "../components/common";
+import { Amount, ErrorNotice, Loading } from "../components/common";
 import EditEntryButton from "../components/EditEntryButton";
 import LanguageFlag from "../components/LanguageFlag";
-import { entryKeyOf, keyFor } from "../components/entryFields";
+import { ConditionBadge, entryKeyOf, keyFor } from "../components/entryFields";
 import { useAction, useAsync } from "../hooks";
 import { usePriceSource } from "../priceSource";
 
@@ -142,7 +142,7 @@ export default function CardPage() {
               {card.rows.map((row) => (
                 <tr key={entryKeyOf(keyFor(card.passcode, row))}>
                   <td className="num">{row.quantity}</td>
-                  <td>{formatCondition(row.condition)}</td>
+                  <td><ConditionBadge condition={row.condition} /></td>
                   <td>{row.edition.toLowerCase()}</td>
                   <td className="lang-cell">
                     <LanguageFlag code={row.language} /> {row.language}

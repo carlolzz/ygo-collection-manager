@@ -178,22 +178,29 @@ so nothing you've loaded before is ever lost, and the app reads the newest one.
 
 ### Adding a card by hand
 
-Click **Add card** in the top right and type the card's name, or the 8-digit
-number printed in its bottom-left corner. Names work in English, German and
-Italian, so *Kartenkavallerist* finds Card Trooper.
+Click **Add card** in the top right, choose the card's language, and type its
+name or the 8-digit number printed in its bottom-left corner. Names are searched
+in the language you picked, so with Italian selected *Mago Nero* finds Dark
+Magician — which is the name it is stored under, because the collection file
+keeps English names throughout. A passcode works whatever the language is set to.
+
+Only cards the downloaded card data knows about can be added. If Italian is
+listed as "not downloaded", press **Update now** in the card-data banner once.
 
 Pick the card, then say how many copies you have. **You get one line per copy**,
 because three copies of a card are often not three of the same thing: one might
-be German and Common, another Italian, Rare and 1st Edition, another an English
-Ultra Rare. Set each line's set, condition, edition and language separately.
+be Italian and Common, another Italian, Rare and 1st Edition, another an English
+Ultra Rare. Each line starts in the language you searched in; set each line's
+set, condition, edition and language separately.
 
 Lines that end up identical are stored as one, and if you already own a card in
 exactly that state its quantity goes up instead of it being listed twice. The
 dialog tells you which will happen before you save.
 
-If the card isn't found — a very new set, usually — click **Not listed? Add it
-by hand** and type the number and name yourself. It's stored just the same, and
-its artwork and stats appear once the card data catches up.
+If the card isn't found — a very new set, usually — press **Update now** in the
+card-data banner to pull a fresh dump from YGOPRODeck, then search again. Only
+cards the downloaded data knows about can be added, so a mistyped number cannot
+become a permanent line that no card will ever attach to.
 
 Each save writes a new `ygo_collection_…csv` in your `data` folder. To undo one,
 delete that newest file and restart the app.

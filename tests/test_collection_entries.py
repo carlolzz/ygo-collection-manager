@@ -353,26 +353,25 @@ def test_an_alternate_artwork_appears_once_by_name_but_is_findable_by_its_passco
     assert by_alt[0]["owned_copies"] == 6
 
 
-# --- searching in German and Italian -----------------------------------------
+# --- searching in Italian ------------------------------------------------------
 
 
 @pytest.mark.parametrize(
-    ("query", "language", "localized"),
+    ("query", "localized"),
     [
-        ("Dunkler Magier", "DE", "Dunkler Magier"),
-        ("dunkler", "DE", "Dunkler Magier"),
-        ("Mago Nero", "IT", "Mago Nero"),
-        ("Tal der Toten", "DE", "Tal der Toten"),
-        ("Urwesen", "DE", "Nibiru, das Urwesen"),
+        ("Mago Nero", "Mago Nero"),
+        ("mago", "Mago Nero"),
+        ("Primordiale", "Nibiru, l'Essere Primordiale"),
+        ("Mondo Virtuale", "Hime Mondo Virtuale - Nyannyan"),
     ],
 )
-def test_a_card_is_findable_by_its_german_or_italian_name(client, query, language, localized):
+def test_a_card_is_findable_by_its_italian_name(client, query, localized):
     hits = client.get("/api/catalogue/cards", params={"q": query}).json()
     assert len(hits) == 1
     # The English name is what comes back, because that is what gets written to
     # the ledger; the localized one says why this card matched.
     assert hits[0]["matched_name"] == localized
-    assert hits[0]["matched_language"] == language
+    assert hits[0]["matched_language"] == "IT"
 
 
 def test_a_localized_search_still_returns_the_english_name_to_store(client):
@@ -405,22 +404,89 @@ def test_a_localized_name_is_folded_like_an_english_one(client):
 
 
 def test_a_card_with_no_localized_name_is_still_found_in_english(client):
-    """Mystical Elf is in neither localized dump — it must not vanish."""
+    """Mystical Elf is not in the Italian dump — an unscoped search must find it."""
     assert [
         h["name"] for h in client.get("/api/catalogue/cards", params={"q": "Mystical"}).json()
     ] == ["Mystical Elf"]
 
 
 def test_one_card_matching_in_two_languages_appears_once(client):
-    """'Nyannyan' is in the German and Italian names alike, and the English one."""
+    """'Nyannyan' is in the Italian name and the English one alike."""
     hits = client.get("/api/catalogue/cards", params={"q": "Nyannyan"}).json()
     assert len(hits) == 1
     assert hits[0]["name"] == "Virtual World Hime - Nyannyan"
 
 
+# --- scoping the search to one language ----------------------------------------
+
+
+def test_a_scoped_search_finds_a_card_by_that_languages_name(client):
+    hits = client.get(
+        "/api/catalogue/cards", params={"q": "Mago Nero", "language": "IT"}
+    ).json()
+    assert [h["name"] for h in hits] == ["Dark Magician"]
+    assert hits[0]["matched_name"] == "Mago Nero"
+    assert hits[0]["matched_language"] == "IT"
+
+
+def test_a_scoped_search_does_not_match_another_languages_name(client):
+    """The whole point of the scope: Italian means Italian, not Italian-or-English."""
+    assert (
+        client.get(
+            "/api/catalogue/cards", params={"q": "Dark Magician", "language": "IT"}
+        ).json()
+        == []
+    )
+
+
+def test_a_scoped_search_hides_a_card_the_localized_dump_does_not_cover(client):
+    """Mystical Elf has no Italian name, so it is not findable while IT is chosen."""
+    assert (
+        client.get("/api/catalogue/cards", params={"q": "Mystical", "language": "IT"}).json()
+        == []
+    )
+
+
+def test_scoping_to_english_excludes_the_localized_names(client):
+    assert (
+        client.get(
+            "/api/catalogue/cards", params={"q": "Mago Nero", "language": "EN"}
+        ).json()
+        == []
+    )
+    assert [
+        h["name"]
+        for h in client.get(
+            "/api/catalogue/cards", params={"q": "Dark Magician", "language": "EN"}
+        ).json()
+    ] == ["Dark Magician"]
+
+
+def test_a_passcode_resolves_whatever_language_is_chosen(client):
+    """A passcode is a number, not a name — the scope has nothing to say about it."""
+    for language in (None, "EN", "IT"):
+        params = {"q": "46986414"} | ({"language": language} if language else {})
+        assert [
+            h["name"] for h in client.get("/api/catalogue/cards", params=params).json()
+        ] == ["Dark Magician"]
+
+
+def test_an_unknown_language_matches_nothing_rather_than_erroring(client):
+    response = client.get("/api/catalogue/cards", params={"q": "Mago", "language": "FR"})
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 def test_the_catalogue_status_names_the_languages_it_can_be_searched_in(client):
-    """Nothing is cached in this test, so it reports none rather than guessing."""
-    assert client.get("/api/catalogue/status").json()["languages"] == []
+    """Nothing is cached in this test, so it reports none rather than guessing.
+
+    ``search_languages`` is the configured set, and is reported whether or not a
+    dump has been fetched — the difference between the two is what tells the
+    picker to offer a language as unavailable instead of silently finding nothing.
+    """
+    status = client.get("/api/catalogue/status").json()
+    assert status["languages"] == []
+    assert status["search_languages"] == ["EN", "IT"]
 
 
 def test_search_still_works_on_a_cache_with_no_names_table(
@@ -441,7 +507,7 @@ def test_search_still_works_on_a_cache_with_no_names_table(
         assert [
             h["name"] for h in old.get("/api/catalogue/cards", params={"q": "Dark"}).json()
         ] == ["Dark Magician"]
-        assert old.get("/api/catalogue/cards", params={"q": "Dunkler"}).json() == []
+        assert old.get("/api/catalogue/cards", params={"q": "Mago Nero"}).json() == []
 
 
 def test_a_search_that_matches_nothing_is_an_empty_list_not_an_error(client):

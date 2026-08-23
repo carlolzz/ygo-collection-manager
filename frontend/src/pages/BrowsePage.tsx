@@ -75,6 +75,13 @@ export default function BrowsePage() {
     setParams(next);
   }
 
+  /** Page, then go back to the top — the top pager is otherwise a control that
+   *  changes every tile above and below it while leaving you mid-grid. */
+  function goToPage(next: number) {
+    update("offset", next ? String(next) : "");
+    window.scrollTo({ top: 0 });
+  }
+
   /** Clearing drops the filters, not how you chose to look at the results. */
   function clearFilters() {
     setParams(compact ? new URLSearchParams({ view: "compact" }) : new URLSearchParams());
@@ -138,18 +145,18 @@ export default function BrowsePage() {
               <p>No cards in the collection satisfy every active filter.</p>
             </div>
           ) : (
-            <div className={compact ? "card-grid compact" : "card-grid"}>
-              {page.data.items.map((card) => (
-                <CardTile key={card.passcode} card={card} compact={compact} />
-              ))}
-            </div>
+            <>
+              {/* Above as well as below: sixty tiles is a long way to scroll to
+                  reach the only control that gets you to the next of them. */}
+              <Pager offset={offset} total={page.data.total_cards} onGo={goToPage} />
+              <div className={compact ? "card-grid compact" : "card-grid"}>
+                {page.data.items.map((card) => (
+                  <CardTile key={card.passcode} card={card} compact={compact} />
+                ))}
+              </div>
+              <Pager offset={offset} total={page.data.total_cards} onGo={goToPage} />
+            </>
           )}
-
-          <Pager
-            offset={offset}
-            total={page.data.total_cards}
-            onGo={(next) => update("offset", next ? String(next) : "")}
-          />
         </>
       )}
     </div>
@@ -287,19 +294,29 @@ function Pager({
   if (total <= PAGE_SIZE) return null;
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const pages = Math.ceil(total / PAGE_SIZE);
+  const first = offset <= 0;
+  const last = offset + PAGE_SIZE >= total;
   return (
-    <div className="row" style={{ justifyContent: "center" }}>
-      <button disabled={offset <= 0} onClick={() => onGo(Math.max(0, offset - PAGE_SIZE))}>
-        Previous
+    <div className="pager">
+      <button className="pager-jump" disabled={first} aria-label="First page" onClick={() => onGo(0)}>
+        «
       </button>
-      <span className="muted">
+      <button disabled={first} onClick={() => onGo(Math.max(0, offset - PAGE_SIZE))}>
+        ‹ Previous
+      </button>
+      <span className="muted pager-count">
         Page {page} of {pages}
       </span>
+      <button disabled={last} onClick={() => onGo(offset + PAGE_SIZE)}>
+        Next ›
+      </button>
       <button
-        disabled={offset + PAGE_SIZE >= total}
-        onClick={() => onGo(offset + PAGE_SIZE)}
+        className="pager-jump"
+        disabled={last}
+        aria-label="Last page"
+        onClick={() => onGo((pages - 1) * PAGE_SIZE)}
       >
-        Next
+        »
       </button>
     </div>
   );

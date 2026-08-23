@@ -17,7 +17,6 @@ FIXTURES = Path(__file__).parent / "fixtures"
 FIXTURE_CSV = FIXTURES / "collection_fixture.csv"
 FIXTURE_DUMP = FIXTURES / "cardinfo_fixture.json"
 FIXTURE_DUMPS_LOCALIZED = {
-    "DE": FIXTURES / "cardinfo_fixture.de.json",
     "IT": FIXTURES / "cardinfo_fixture.it.json",
 }
 FIXTURE_YDKE = FIXTURES / "deck_fixture.ydke.txt"
@@ -38,9 +37,9 @@ def build_catalogue(dump_path: Path, out_dir: Path, *, localized: bool = True) -
     """Normalize the fixture dumps into ``out_dir``; return the paths by config name.
 
     Args:
-        localized: include the German and Italian name indexes. False leaves the
-            names table English-only, which is what a cache fetched before those
-            languages were configured looks like.
+        localized: include the Italian name index. False leaves the names table
+            English-only, which is what a cache fetched before localized names
+            were configured looks like.
     """
     import json as _json
 

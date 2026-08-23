@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from importlib.metadata import PackageNotFoundError, version as package_version
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -25,6 +26,19 @@ from .routes import cards, catalogue, collection, deck, images, stats, valuation
 __all__ = ["app", "create_app"]
 
 log = logging.getLogger(__name__)
+
+
+def _version() -> str:
+    """The installed distribution's version, so this cannot drift from pyproject.
+
+    It did: the number here read 0.5.0 while the project was on 0.6.0. Falls back
+    only when the package is not installed at all, which is a source checkout
+    being imported directly rather than anything a user will see.
+    """
+    try:
+        return package_version("ygo-collection-manager")
+    except PackageNotFoundError:
+        return "0+unknown"
 
 
 def create_app(csv_path: Path | str | None = None) -> FastAPI:
@@ -55,7 +69,7 @@ def create_app(csv_path: Path | str | None = None) -> FastAPI:
     app = FastAPI(
         title="YGO Collection Manager",
         description=__doc__,
-        version="0.5.0",
+        version=_version(),
         lifespan=lifespan,
     )
 

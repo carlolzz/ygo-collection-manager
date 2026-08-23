@@ -12,12 +12,21 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...catalogue.dump import fetch_dump, load_meta
-from ...config import BASE_LANGUAGE
+from ...config import BASE_LANGUAGE, CATALOGUE_LANGUAGES
 from ...text import fold
 from ..deps import Database, get_db
 from ..models import CatalogueCard, CataloguePrinting, CatalogueStatus
 
 router = APIRouter(prefix="/catalogue", tags=["catalogue"])
+
+#: The languages the picker offers to search in — English plus whatever extra
+#: name indexes are configured. What is *cached* is a separate question, and the
+#: status reports both: the difference is a language the UI must offer as
+#: unavailable rather than let someone select and find nothing in.
+SEARCH_LANGUAGES: list[str] = [
+    BASE_LANGUAGE,
+    *(language.upper() for language in CATALOGUE_LANGUAGES),
+]
 
 
 def _status(db: Database) -> CatalogueStatus:
@@ -41,6 +50,7 @@ def _status(db: Database) -> CatalogueStatus:
         fetched_at=meta.fetched_at_utc if meta else None,
         age_days=meta.age_days if meta else None,
         languages=[lang.upper() for lang in meta.languages] if meta else [],
+        search_languages=SEARCH_LANGUAGES,
         catalogue_passcodes=row[0],
         catalogue_cards=row[1],
         collection_rows=row[2],
@@ -101,21 +111,32 @@ _LIKE_ESCAPE = str.maketrans({"\\": "\\\\", "%": "\\%", "_": "\\_"})
 def search_cards(
     db: Annotated[Database, Depends(get_db)],
     q: Annotated[str, Query(min_length=1, description="A card name, or a passcode")],
+    language: Annotated[
+        str | None,
+        Query(description="Scope the name search to one language. Omit to search all."),
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 25,
 ) -> list[CatalogueCard]:
     """Find cards in the cached dump, owned or not. No network, ever.
 
     All digits is read as a passcode and matched exactly on the canonical key —
     including alternate-artwork ids, since that is the number actually printed on
-    the card in hand.
+    the card in hand. A passcode is a number rather than a name, so ``language``
+    does not apply to it: the same digits find the same card whichever language
+    is selected.
 
-    Anything else is a substring search on the folded name **in every cached
-    language**, so ``necrovalley`` finds ``Nécrovalley`` and ``Kartenkämpfer``
-    finds Card Trooper. A card matched by a name other than its English one
-    reports that name in ``matched_name``, because a picker that answers a German
-    query with only English names looks like it found the wrong card. The English
-    name is still what is returned as ``name`` and what gets written to the
-    ledger — the collection's names have to agree with the scanner's.
+    Anything else is a substring search on the folded name, so ``necrovalley``
+    finds ``Nécrovalley`` and ``Mago Nero`` finds Dark Magician. Passing
+    ``language`` scopes that search to one language's names and nothing else —
+    a card the localized dump does not cover is then not findable by name, which
+    is the point: someone entering an Italian card is looking for Italian names.
+    Omitting it searches every cached language at once.
+
+    A card matched by a name other than its English one reports that name in
+    ``matched_name``, because a picker that answers an Italian query with only
+    English names looks like it found the wrong card. The English name is still
+    what is returned as ``name`` and what gets written to the ledger — the
+    collection's names have to agree with the scanner's.
 
     Alternate artworks are excluded from the name search, so one card appears in
     the list once.
@@ -136,6 +157,11 @@ def search_cards(
     else:
         exact = fold(query)
         folded = exact.translate(_LIKE_ESCAPE)
+        # Only the clause is interpolated; the code itself is bound, so an
+        # unknown language matches nothing rather than reaching the SQL. One
+        # statement with an optional predicate, rather than two to keep in step.
+        wanted = language.strip().upper() if language and language.strip() else None
+        scope = "AND language = ?" if wanted else ""
         rows = con.execute(
             f"""
             WITH hit AS (
@@ -147,15 +173,17 @@ def search_cards(
                     min(CASE WHEN name_folded = ? THEN 0
                              WHEN name_folded LIKE ? ESCAPE '\\' THEN 1
                              ELSE 2 END)                                AS rank,
-                    -- The name that actually matched, so a German search can show
-                    -- what it found. arg_min ties it to the best-ranked row rather
-                    -- than picking an arbitrary language's.
+                    -- The name that actually matched, so an Italian search can
+                    -- show what it found. arg_min ties it to the best-ranked row
+                    -- rather than picking an arbitrary language's. Under a scope
+                    -- the group holds one language, so it simply returns that.
                     arg_min(name, CASE WHEN language = ? THEN 0 ELSE 1 END)
                                                                         AS hit_name,
                     arg_min(language, CASE WHEN language = ? THEN 0 ELSE 1 END)
                                                                         AS hit_language
                 FROM card_names
                 WHERE name_folded LIKE ? ESCAPE '\\'
+                {scope}
                 GROUP BY card_id
             )
             SELECT any_value(k.passcode), any_value(k.name), any_value(k.type), {_COUNTS},
@@ -166,7 +194,15 @@ def search_cards(
             ORDER BY min(h.rank), any_value(k.name)
             LIMIT ?
             """,
-            [exact, f"{folded}%", BASE_LANGUAGE, BASE_LANGUAGE, f"%{folded}%", limit],
+            [
+                exact,
+                f"{folded}%",
+                BASE_LANGUAGE,
+                BASE_LANGUAGE,
+                f"%{folded}%",
+                *([wanted] if wanted else []),
+                limit,
+            ],
         ).fetchall()
 
     return [

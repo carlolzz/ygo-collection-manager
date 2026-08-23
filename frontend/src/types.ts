@@ -167,8 +167,14 @@ export interface FilterOptions {
 export interface CatalogueStatus {
   fetched_at: string | null;
   age_days: number | null;
-  /** Languages the picker can be searched in besides English. */
+  /** Languages whose name index is actually cached, besides English. */
   languages: string[];
+  /**
+   * Languages the picker offers to search in, English first. One listed here but
+   * missing from `languages` is configured yet undownloaded — offer it as
+   * unavailable rather than let it be picked and silently match nothing.
+   */
+  search_languages: string[];
   catalogue_cards: number;
   catalogue_passcodes: number;
   collection_rows: number;

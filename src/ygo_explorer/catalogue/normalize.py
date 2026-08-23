@@ -220,19 +220,21 @@ def card_names_rows(
 
     The base dump supplies the English names; each localized dump supplies one
     more language for the cards it covers. A localized dump holds TCG cards only,
-    so most cards have fewer rows here than there are languages — which costs
-    nothing, since a card with no German name is still found by its English one.
+    so most cards have fewer rows here than there are languages — a card with no
+    Italian name is simply not findable by name while Italian is selected.
 
-    Duplicates are dropped rather than merged: a localized dump that simply
-    echoes the English name adds no way to find the card and would otherwise make
-    the same card match twice for one query.
+    The key is per *language*, so a localized dump that merely echoes the English
+    name still gets its own row. That row carries no new spelling, but it is what
+    makes the card findable at all under a language-scoped search — dropping it
+    as a duplicate would hide every card whose name was not translated. Nothing
+    downstream double-counts it: the search groups its hits by ``card_id``.
     """
     by_language: dict[str, list[dict]] = {BASE_LANGUAGE: cards}
     for language, payload in (localized or {}).items():
         by_language[language.upper()] = payload
 
     rows: list[dict] = []
-    seen: set[tuple[str, str]] = set()
+    seen: set[tuple[str, str, str]] = set()
     for language, payload in by_language.items():
         for card in payload:
             name = card.get("name") or ""
@@ -240,9 +242,9 @@ def card_names_rows(
                 continue
             card_id = str(card["id"])
             folded = fold(name)
-            if (card_id, folded) in seen:
+            if (card_id, language, folded) in seen:
                 continue
-            seen.add((card_id, folded))
+            seen.add((card_id, language, folded))
             rows.append(
                 {
                     "card_id": card_id,

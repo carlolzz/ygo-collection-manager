@@ -248,6 +248,20 @@ export interface RefineJob {
   errors: string[];
 }
 
+export interface CatalogueJob {
+  id: string;
+  status: "pending" | "running" | "finished" | "error";
+  phase: "starting" | "cards" | "names" | "building";
+  language: string | null;
+  downloaded_bytes: number;
+  expected_bytes: number | null;
+  percent: number;
+  /** Measured from this connection, and null whenever there is nothing honest
+   *  to say — before the first bytes, and while the catalogue is being built. */
+  eta_seconds: number | null;
+  error: string | null;
+}
+
 export interface DeckCard {
   passcode: string;
   name: string;

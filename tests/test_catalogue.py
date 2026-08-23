@@ -11,10 +11,12 @@ import pytest
 from ygo_explorer.catalogue.dump import (
     CachePaths,
     DumpMeta,
+    DumpProgress,
     fetch_dump,
     load_meta,
     read_dump,
 )
+from ygo_explorer.catalogue.job import DOWNLOAD_SHARE, RefreshJob
 from ygo_explorer.catalogue.normalize import (
     card_names_rows,
     cards_rows,
@@ -343,6 +345,95 @@ async def test_an_unavailable_translation_does_not_fail_the_refresh(fixture_dump
     assert meta.languages == []
     assert meta.card_count == 6
     assert CachePaths(tmp_path).cards.is_file()
+
+
+@pytest.mark.asyncio
+async def test_a_refresh_reports_its_progress_by_phase(fixture_dump, tmp_path):
+    """The download says what it is doing and how much of it has landed.
+
+    Without this there is nothing an ETA could be computed from: the caller sees
+    one awaited call that returns tens of megabytes later.
+    """
+    payload = fixture_dump.read_bytes()
+    requests: list[httpx.Request] = []
+    seen: list[DumpProgress] = []
+
+    async with _client(payload, requests) as client:
+        await fetch_dump(
+            client=client,
+            cache_dir=tmp_path,
+            languages=("it",),
+            on_progress=seen.append,
+        )
+
+    assert [p.phase for p in seen][0] == "cards"
+    # Two downloads: the English dump, then the Italian name index.
+    assert [p.steps for p in seen] == [2] * len(seen)
+    assert {p.step for p in seen if p.phase == "cards"} == {1}
+    assert {(p.step, p.language) for p in seen if p.phase == "names"} == {(2, "IT")}
+    assert seen[-1].phase == "building"
+
+    # Every download step ends having reported what the server declared, so a
+    # bar driven by this reaches its end rather than stopping short.
+    for phase in ("cards", "names"):
+        last = [p for p in seen if p.phase == phase][-1]
+        assert last.expected == len(payload)
+        assert last.downloaded == last.expected
+
+
+@pytest.mark.asyncio
+async def test_progress_is_optional(fixture_dump, tmp_path):
+    """The CLI passes no callback, and must not be made to."""
+    payload = fixture_dump.read_bytes()
+    requests: list[httpx.Request] = []
+
+    async with _client(payload, requests) as client:
+        meta = await fetch_dump(client=client, cache_dir=tmp_path, languages=())
+
+    assert meta.card_count == 6
+
+
+# --- the refresh job's arithmetic --------------------------------------------
+
+
+def test_the_estimate_counts_steps_that_have_not_started_yet():
+    """Otherwise the bar races to the end of the first file and starts over."""
+    job = RefreshJob(id="t")
+    job.record(DumpProgress("cards", None, 1, 2, 5_000_000, 20_000_000))
+
+    # Two downloads: the one in flight at its declared size, and one not yet
+    # begun, assumed to weigh what the first does.
+    assert job.expected_bytes == 40_000_000
+    assert job.downloaded_bytes == 5_000_000
+    assert job.percent == pytest.approx(DOWNLOAD_SHARE / 8)
+
+
+def test_a_step_reporting_again_replaces_its_count_rather_than_adding_to_it():
+    job = RefreshJob(id="t")
+    job.record(DumpProgress("cards", None, 1, 1, 1_000, 10_000))
+    job.record(DumpProgress("cards", None, 1, 1, 4_000, 10_000))
+    assert job.downloaded_bytes == 4_000
+
+
+def test_building_holds_the_bar_instead_of_claiming_to_be_done():
+    """The derivation reports no progress, so no number is invented for it."""
+    job = RefreshJob(id="t")
+    job.record(DumpProgress("cards", None, 1, 1, 10_000, 10_000))
+    assert job.percent == DOWNLOAD_SHARE
+
+    job.record(DumpProgress("building", None, 1, 1, 0, None))
+    assert job.percent == DOWNLOAD_SHARE
+    assert job.eta_seconds is None
+    assert job.phase == "building"
+
+
+def test_the_eta_is_the_remaining_bytes_at_the_observed_rate():
+    job = RefreshJob(id="t")
+    # One second's worth of history, so the rate is 10 MB/s exactly.
+    job._last_at -= 1.0
+    job.record(DumpProgress("cards", None, 1, 1, 10_000_000, 50_000_000))
+
+    assert job.eta_seconds == pytest.approx(4.0, rel=0.05)
 
 
 def test_a_meta_file_written_before_languages_existed_still_loads(tmp_path):

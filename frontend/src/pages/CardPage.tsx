@@ -122,7 +122,7 @@ export default function CardPage() {
           What you own: {card.total_copies} copies by condition, edition and language
         </div>
         <div className="table-wrap">
-          <table>
+          <table className="owned-table">
             <thead>
               <tr>
                 <th className="num">Qty</th>
@@ -158,7 +158,7 @@ export default function CardPage() {
                     )}
                   </td>
                   <td>{row.rarity ?? <span className="muted">—</span>}</td>
-                  <td className="muted">{row.notes ?? ""}</td>
+                  <td className="muted notes-cell">{row.notes ?? ""}</td>
                   <td>
                     <EditEntryButton
                       passcode={card.passcode}

@@ -322,6 +322,17 @@ tbody tr:last-child td { border-bottom: none; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .muted { color: var(--text-faint); }
 
+/* The owned-copies table on a card page. Its values are short and uniform — a
+   grade, a language code, a rarity — and read as columns only when they sit
+   under the middle of their heading. Scoped, because the rules above govern
+   every other table in the app, where left is right. */
+.owned-table th, .owned-table td { text-align: center; }
+/* Qty included: one right-aligned column among centred ones is the ragged edge
+   this is here to remove. Tabular figures still come from .num. */
+.owned-table th.num, .owned-table td.num { text-align: center; }
+/* Free-form prose, which centring only makes harder to read. */
+.owned-table .notes-cell { text-align: left; }
+
 /* --- notices -------------------------------------------------------------- */
 
 .notice {
@@ -435,6 +446,14 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .progress-track { height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
 .progress-fill { height: 100%; background: var(--accent); transition: width 0.2s; }
+/* For the step that reports no progress of its own: rather than parking the bar
+   at 100% while work continues, it stops where the measurable part ended and
+   pulses, which says "still going" without claiming a number. */
+.progress-fill.working { animation: progress-pulse 1.4s ease-in-out infinite; }
+@keyframes progress-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
 
 /* --- upload dialog -------------------------------------------------------- */
 
@@ -498,9 +517,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .modal-wide { width: min(52rem, 100%); }
 
 /* The query takes the room; the language is a fixed, narrow choice beside it. */
-.search-bar { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.search-bar { display: flex; gap: 0.9rem; align-items: center; flex-wrap: wrap; }
 .search-bar-query { flex: 1 1 14rem; min-width: 12rem; }
-.search-bar-language { flex: 0 0 auto; }
+/* A flex row of its own, so the flag is spaced from the dropdown by an explicit
+   gap rather than by .lang-cell's 0.15rem — that margin is sized for a table
+   cell, and beside a full-height select it reads as the flag touching it. */
+.search-bar-language { flex: 0 0 auto; display: flex; align-items: center; gap: 0.5rem; }
 .search-bar-language select { width: auto; min-width: 9rem; }
 
 .picker-results {

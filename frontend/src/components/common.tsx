@@ -77,3 +77,18 @@ export function formatDays(days: number | null | undefined) {
   if (days < 2) return "yesterday";
   return `${Math.round(days)} days ago`;
 }
+
+/** Rounded to the precision the number deserves: a download estimate that
+ *  claims "1 minute 43 seconds" claims more than it knows. */
+export function formatEta(seconds: number | null | undefined) {
+  if (seconds == null || !isFinite(seconds)) return null;
+  if (seconds < 10) return "a few seconds left";
+  if (seconds < 60) return `about ${Math.round(seconds / 5) * 5} seconds left`;
+  if (seconds < 90) return "about a minute left";
+  return `about ${Math.round(seconds / 60)} minutes left`;
+}
+
+export function formatBytes(bytes: number) {
+  const mb = bytes / 1_000_000;
+  return mb < 10 ? `${mb.toFixed(1)} MB` : `${Math.round(mb)} MB`;
+}

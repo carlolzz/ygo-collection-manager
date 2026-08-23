@@ -9,6 +9,7 @@ import type {
   CardDetail,
   CardPage,
   CatalogueCard,
+  CatalogueJob,
   CataloguePrinting,
   CatalogueStatus,
   CollectionStatus,
@@ -66,8 +67,14 @@ export const getFilterOptions = () => request<FilterOptions>("/meta/filters");
 export const getCatalogueStatus = () => request<CatalogueStatus>("/catalogue/status");
 export const getCollectionStatus = () => request<CollectionStatus>("/collection/status");
 
-export const refreshCatalogue = (force = false) =>
-  post<CatalogueStatus>(`/catalogue/refresh?force=${force}`);
+/** Start the card-data download. Returns as soon as it is under way — forty
+ *  megabytes is too long to hold a request open with nothing to report — so the
+ *  caller polls `getCatalogueRefresh` for the bytes and the time left. */
+export const startCatalogueRefresh = (force = false) =>
+  post<CatalogueJob>(`/catalogue/refresh?force=${force}`);
+
+export const getCatalogueRefresh = (id: string) =>
+  request<CatalogueJob>(`/catalogue/refresh/${id}`);
 
 // `sourceField` is required on purpose: the default lives in the server's
 // config and nowhere else, so the two can never drift apart.

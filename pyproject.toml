@@ -1,6 +1,6 @@
 [project]
 name = "ygo-collection-manager"
-version = "0.7.0"
+version = "0.8.0"
 description = "Local manager, browser, analyser and valuer for a Yu-Gi-Oh card collection"
 requires-python = ">=3.12"
 dependencies = [

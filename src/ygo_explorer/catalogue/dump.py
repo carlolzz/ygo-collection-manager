@@ -11,8 +11,10 @@ row, because the ledger's ``name`` column has to agree with the scanner's.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +33,7 @@ from .normalize import normalize_dump
 
 __all__ = [
     "DumpMeta",
+    "DumpProgress",
     "fetch_dump",
     "load_meta",
     "dump_age_days",
@@ -43,6 +46,11 @@ __all__ = [
 _NO_PARAMS: dict[str, str] = {}
 
 _TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0)
+
+#: How much has to land before progress is reported again. Tens of megabytes
+#: arrive in chunks of a few kilobytes, and a caller that recomputes an estimate
+#: per chunk is doing thousands of times the work the screen can show.
+_PROGRESS_STEP = 256 * 1024
 
 log = logging.getLogger(__name__)
 
@@ -83,6 +91,33 @@ class CachePaths:
 
     def localized(self, language: str) -> Path:
         return self.root / f"cardinfo.{language.lower()}.json"
+
+
+@dataclass(frozen=True)
+class DumpProgress:
+    """Where a refresh has got to, reported as it goes.
+
+    Deliberately raw: bytes and step numbers, no percentage and no estimate. The
+    caller knows whether it is drawing a bar, writing a log line or doing
+    nothing, and only it can say how the phases should be weighed against each
+    other.
+    """
+
+    #: ``cards`` and ``names`` are downloads; ``building`` derives the parquet
+    #: and has no byte count to report, only a start.
+    phase: str
+    #: The language being fetched, during ``names``.
+    language: str | None
+    #: 1-based, over ``steps``. Both count the *downloads* — the build is not one
+    #: of them, having no size to weigh against the others, and reports the last
+    #: download's number rather than a step of its own.
+    step: int
+    steps: int
+    #: Bytes off the wire for *this* step. Not cumulative: the caller adds up
+    #: the steps, because only it knows which ones it has already counted.
+    downloaded: int
+    #: What the server said this step weighs, when it said anything at all.
+    expected: int | None
 
 
 @dataclass(frozen=True)
@@ -138,6 +173,41 @@ def _cards_of(body: bytes, url: str) -> list[dict]:
     return payload["data"]
 
 
+async def _download(
+    client: httpx.AsyncClient,
+    params: dict[str, str],
+    report: Callable[[int, int | None], None],
+) -> bytes:
+    """One dump, streamed, with the bytes reported as they land.
+
+    Streamed rather than read whole so there is something to report at all: these
+    are tens of megabytes, and a caller waiting on ``response.content`` has
+    nothing to say for the minute it takes.
+    """
+    buffer = bytearray()
+    async with client.stream("GET", CARDINFO_URL, params=params) as response:
+        response.raise_for_status()
+        raw = response.headers.get("content-length")
+        expected = int(raw) if raw and raw.isdigit() else None
+        report(0, expected)
+
+        # Decoded bytes, not httpx's num_bytes_downloaded. That counts what came
+        # off the wire, which is the right pairing for a Content-Length — but
+        # YGOPRODeck sends none and gzips the body, so the wire figure is about
+        # a seventh of the dump and measuring by it puts the estimate out by the
+        # same factor. The decoded length is also what the file on disk weighs,
+        # which is the size the UI quotes.
+        reported = 0
+        async for chunk in response.aiter_bytes():
+            buffer += chunk
+            if len(buffer) - reported >= _PROGRESS_STEP:
+                reported = len(buffer)
+                report(reported, expected)
+        report(len(buffer), expected)
+
+    return bytes(buffer)
+
+
 def _write_atomically(path: Path, body: bytes) -> None:
     """Via a temp file, so an interrupted download never leaves a half-written
     cache that a later read would treat as complete."""
@@ -152,6 +222,7 @@ async def fetch_dump(
     force: bool = False,
     cache_dir: Path | None = None,
     languages: tuple[str, ...] | None = None,
+    on_progress: Callable[[DumpProgress], None] | None = None,
 ) -> DumpMeta:
     """Download the dumps, cache them, and derive the catalogue tables.
 
@@ -168,6 +239,9 @@ async def fetch_dump(
         cache_dir: where the JSON, its metadata and the derived parquet go.
         languages: name indexes to fetch alongside. Defaults to the configured
             set; pass an empty tuple for English only.
+        on_progress: called as the bytes land, and once more when the download
+            gives way to deriving the parquet. Optional: the CLI wants none of
+            it, and the API's progress endpoint is the only caller that does.
     """
     paths = CachePaths(cache_dir or CACHE_DIR)
     wanted = CATALOGUE_LANGUAGES if languages is None else languages
@@ -178,28 +252,47 @@ async def fetch_dump(
     # Before the first write, not after: the localized dumps land here too.
     paths.root.mkdir(parents=True, exist_ok=True)
 
+    steps = 1 + len(wanted)
+
+    def reporter(phase: str, step: int, language: str | None = None):
+        def report(downloaded: int, expected: int | None) -> None:
+            if on_progress is not None:
+                on_progress(
+                    DumpProgress(
+                        phase=phase,
+                        language=language,
+                        step=step,
+                        steps=steps,
+                        downloaded=downloaded,
+                        expected=expected,
+                    )
+                )
+
+        return report
+
     owns_client = client is None
     client = client or httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=True)
     localized: dict[str, list[dict]] = {}
     try:
         await shared_limiter().acquire()
-        response = await client.get(CARDINFO_URL, params=_NO_PARAMS)
-        response.raise_for_status()
-        body = response.content
+        body = await _download(client, _NO_PARAMS, reporter("cards", 1))
 
-        for language in wanted:
+        for index, language in enumerate(wanted, start=2):
             try:
                 await shared_limiter().acquire()
-                extra = await client.get(CARDINFO_URL, params={"language": language})
-                extra.raise_for_status()
-                cards = _cards_of(extra.content, CARDINFO_URL)
+                content = await _download(
+                    client,
+                    {"language": language},
+                    reporter("names", index, language.upper()),
+                )
+                cards = _cards_of(content, CARDINFO_URL)
             except Exception:
                 # One unavailable translation must not cost the whole refresh.
                 log.warning("no %s card names; search falls back to English", language,
                             exc_info=True)
                 continue
             localized[language.upper()] = cards
-            _write_atomically(paths.localized(language), extra.content)
+            _write_atomically(paths.localized(language), content)
     finally:
         if owns_client:
             await client.aclose()
@@ -207,7 +300,12 @@ async def fetch_dump(
     cards = _cards_of(body, CARDINFO_URL)
     _write_atomically(paths.dump, body)
 
-    normalize_dump(
+    reporter("building", steps)(0, None)
+    # On a thread: this is CPU-bound DuckDB work over some 14,000 cards, and on
+    # the event loop it would stall every other request — the progress endpoint
+    # being polled about it included — for as long as it runs.
+    await asyncio.to_thread(
+        normalize_dump,
         cards,
         cards_path=paths.cards,
         card_sets_path=paths.card_sets,

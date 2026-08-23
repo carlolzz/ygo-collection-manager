@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from ..catalogue.job import RefreshRegistry
 from ..config import FRONTEND_DIST, WARM_IMAGES_ON_STARTUP
 from ..images import ImageCache
 from ..pricing.refine import JobRegistry
@@ -49,6 +50,7 @@ def create_app(csv_path: Path | str | None = None) -> FastAPI:
         app.state.db = Database(csv_path)
         app.state.snapshots = SnapshotStore()
         app.state.jobs = JobRegistry()
+        app.state.catalogue_jobs = RefreshRegistry()
         app.state.images = ImageCache()
 
         if WARM_IMAGES_ON_STARTUP and app.state.db.has_collection:

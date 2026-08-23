@@ -54,7 +54,19 @@ export default function DeckPage() {
           >
             {analysis.running ? "Checking…" : "Check against my collection"}
           </button>
-          <button className="subtle" onClick={() => setText("")} disabled={!text}>
+          {/* The whole answer, not just the question: the totals, the cost and
+              the shortfall lists below are all about the list being cleared, so
+              leaving them up would attach them to whatever is typed next. Stays
+              enabled while there is anything left to clear, so an emptied box
+              never strands a result nothing can dismiss. */}
+          <button
+            className="subtle"
+            onClick={() => {
+              setText("");
+              analysis.reset();
+            }}
+            disabled={!text && !result && !analysis.error}
+          >
             Clear
           </button>
         </div>

@@ -54,5 +54,12 @@ export function useAction<T, A extends unknown[]>(
     [action],
   );
 
-  return { data, error, running, trigger, setData };
+  /** Back to before the action was ever run. Both halves, because a stale
+   *  result and a stale error are equally stale. */
+  const reset = useCallback(() => {
+    setData(null);
+    setError(null);
+  }, []);
+
+  return { data, error, running, trigger, setData, reset };
 }

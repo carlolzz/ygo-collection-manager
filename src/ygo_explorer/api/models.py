@@ -399,6 +399,31 @@ class RefineJobOut(BaseModel):
     errors: list[str] = []
 
 
+class CatalogueJobOut(BaseModel):
+    """Progress of a card-data download."""
+
+    id: str
+    status: str = Field(description="pending | running | finished | error")
+    phase: str = Field(description="starting | cards | names | building")
+    language: str | None = Field(
+        default=None, description="The language being fetched, during 'names'."
+    )
+    downloaded_bytes: int
+    expected_bytes: int | None = None
+    percent: float
+    eta_seconds: float | None = Field(
+        default=None,
+        description="Measured from this connection's throughput. Null when there "
+        "is nothing honest to say — before the first bytes, and while the "
+        "catalogue is being built.",
+    )
+    error: str | None = Field(
+        default=None,
+        description="Set when status is 'error'. The only route a failure has to "
+        "the UI, since the endpoint returns before the work does.",
+    )
+
+
 class DeckCardOut(BaseModel):
     passcode: str
     name: str

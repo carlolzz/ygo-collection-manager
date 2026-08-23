@@ -11,11 +11,17 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ...catalogue.dump import fetch_dump, load_meta
+from ...catalogue.dump import load_meta
+from ...catalogue.job import RefreshJob, RefreshRegistry, run_refresh
 from ...config import BASE_LANGUAGE, CATALOGUE_LANGUAGES
 from ...text import fold
-from ..deps import Database, get_db
-from ..models import CatalogueCard, CataloguePrinting, CatalogueStatus
+from ..deps import Database, get_catalogue_jobs, get_db
+from ..models import (
+    CatalogueCard,
+    CatalogueJobOut,
+    CataloguePrinting,
+    CatalogueStatus,
+)
 
 router = APIRouter(prefix="/catalogue", tags=["catalogue"])
 
@@ -67,20 +73,57 @@ def catalogue_status(db: Annotated[Database, Depends(get_db)]) -> CatalogueStatu
     return _status(db)
 
 
-@router.post("/refresh", response_model=CatalogueStatus)
+def _job_out(job: RefreshJob) -> CatalogueJobOut:
+    return CatalogueJobOut(
+        id=job.id,
+        status=job.status,
+        phase=job.phase,
+        language=job.language,
+        downloaded_bytes=job.downloaded_bytes,
+        expected_bytes=job.expected_bytes,
+        percent=job.percent,
+        eta_seconds=job.eta_seconds,
+        error=job.error,
+    )
+
+
+@router.post("/refresh", response_model=CatalogueJobOut, status_code=202)
 async def refresh_catalogue(
     db: Annotated[Database, Depends(get_db)],
+    jobs: Annotated[RefreshRegistry, Depends(get_catalogue_jobs)],
     force: Annotated[bool, Query(description="Refetch even if a cache exists")] = False,
-) -> CatalogueStatus:
-    """Download the bulk dump. The only network call in the read API.
+) -> CatalogueJobOut:
+    """Start downloading the bulk dump. The only network call in the read API.
 
     A POST, and only ever reached by a click: nothing here runs on page load, on
     scroll, on a filter change or on a timer.
+
+    Returns as soon as the work is under way rather than when it is done — some
+    forty megabytes over an unknown line, and a request held open for that long
+    can say nothing about how it is going. Poll ``/refresh/{job_id}`` for the
+    bytes so far and what they imply about the time left.
     """
-    await fetch_dump(force=force)
-    # Re-open so the freshly written parquet is what the next query reads.
-    db.reload()
-    return _status(db)
+    running = jobs.active()
+    if running is not None:
+        raise HTTPException(
+            409,
+            f"Card data download {running.id} is already running "
+            f"({running.percent:.0f}%). Wait for it to finish.",
+        )
+    job = jobs.create()
+    jobs.start(run_refresh(job, db, force=force))
+    return _job_out(job)
+
+
+@router.get("/refresh/{job_id}", response_model=CatalogueJobOut)
+def refresh_progress(
+    job_id: str, jobs: Annotated[RefreshRegistry, Depends(get_catalogue_jobs)]
+) -> CatalogueJobOut:
+    """How far the download has got, and how long the rest is likely to take."""
+    job = jobs.get(job_id)
+    if job is None:
+        raise HTTPException(404, f"No card data download {job_id}.")
+    return _job_out(job)
 
 
 def _passcode_key(passcode: str) -> str:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from conftest import build_catalogue, patch_catalogue_paths
 from ygo_explorer.api.main import create_app
+from ygo_explorer.catalogue.dump import DumpProgress
 
 
 @pytest.fixture
@@ -295,6 +297,82 @@ def test_no_endpoint_touches_the_network_on_a_read(client, monkeypatch):
 
 def test_refresh_is_a_post_not_a_get(client):
     assert client.get("/api/catalogue/refresh").status_code == 405
+
+
+# --- the refresh job ---------------------------------------------------------
+
+
+def _poll_until_done(client, job_id, tries=60):
+    """The job runs detached, so the test drives it the way the UI does."""
+    for _ in range(tries):
+        job = client.get(f"/api/catalogue/refresh/{job_id}").json()
+        if job["status"] in ("finished", "error"):
+            return job
+    raise AssertionError(f"job {job_id} never finished: {job}")
+
+
+def test_refresh_starts_a_job_and_reports_it_to_completion(client, monkeypatch):
+    """The request returns when the work starts, not when it ends."""
+
+    async def fake_fetch(**kwargs):
+        kwargs["on_progress"](
+            DumpProgress(
+                phase="cards", language=None, step=1, steps=1,
+                downloaded=1_000, expected=1_000,
+            )
+        )
+        return None
+
+    monkeypatch.setattr("ygo_explorer.catalogue.job.fetch_dump", fake_fetch)
+
+    started = client.post("/api/catalogue/refresh")
+    assert started.status_code == 202
+    job = started.json()
+    assert job["status"] in ("pending", "running")
+
+    done = _poll_until_done(client, job["id"])
+    assert done["status"] == "finished"
+    assert done["error"] is None
+    assert done["percent"] == 100.0
+
+
+def test_two_refreshes_at_once_are_refused(client, monkeypatch):
+    """Forty megabytes twice over, from two tabs, helps nobody."""
+    # A plain dict rather than an asyncio.Event: the loop runs on the test
+    # client's own thread, and Event.set() across threads is not safe.
+    gate = {"open": False}
+
+    async def blocked(**kwargs):
+        while not gate["open"]:
+            await asyncio.sleep(0.01)
+
+    monkeypatch.setattr("ygo_explorer.catalogue.job.fetch_dump", blocked)
+
+    first = client.post("/api/catalogue/refresh").json()
+    second = client.post("/api/catalogue/refresh")
+    assert second.status_code == 409
+    assert first["id"] in second.json()["detail"]
+
+    gate["open"] = True
+    assert _poll_until_done(client, first["id"])["status"] == "finished"
+
+
+def test_a_failed_refresh_reports_why_through_the_job(client, monkeypatch):
+    """The endpoint returned long ago; the job is the only route to the screen."""
+
+    async def explode(**kwargs):
+        raise RuntimeError("YGOPRODeck said no")
+
+    monkeypatch.setattr("ygo_explorer.catalogue.job.fetch_dump", explode)
+
+    job = client.post("/api/catalogue/refresh").json()
+    done = _poll_until_done(client, job["id"])
+    assert done["status"] == "error"
+    assert "YGOPRODeck said no" in done["error"]
+
+
+def test_progress_for_an_unknown_job_is_a_404(client):
+    assert client.get("/api/catalogue/refresh/nosuchjob").status_code == 404
 
 
 # --- stats -------------------------------------------------------------------

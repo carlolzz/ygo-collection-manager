@@ -7,13 +7,14 @@ from pathlib import Path
 import duckdb
 from fastapi import Request
 
+from ..catalogue.job import RefreshRegistry
 from ..catalogue.views import attach_catalogue
 from ..collection.loader import open_collection, register_fold
 from ..config import collection_csv_path
 from ..pricing.refine import JobRegistry
 from ..pricing.snapshots import SnapshotStore
 
-__all__ = ["Database", "get_db", "get_store", "get_jobs"]
+__all__ = ["Database", "get_db", "get_store", "get_jobs", "get_catalogue_jobs"]
 
 #: Distinguishes "re-open what you had" from an explicit "go back to whichever
 #: export in the data directory is newest", which None now means.
@@ -124,3 +125,7 @@ def get_store(request: Request) -> SnapshotStore:
 
 def get_jobs(request: Request) -> JobRegistry:
     return request.app.state.jobs
+
+
+def get_catalogue_jobs(request: Request) -> RefreshRegistry:
+    return request.app.state.catalogue_jobs

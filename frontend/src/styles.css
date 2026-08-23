@@ -175,6 +175,17 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 @media (prefers-color-scheme: dark) { button.primary { color: #16161c; } }
 button.subtle { background: transparent; }
 button.danger { color: var(--bad); }
+/* A button that sits inside a sentence. Still a button — it acts, it is not
+   navigation — but chrome around three words of prose reads as a dialog. */
+button.link {
+  font: inherit;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+}
 
 input, select, textarea {
   font: inherit;
@@ -330,8 +341,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* Qty included: one right-aligned column among centred ones is the ragged edge
    this is here to remove. Tabular figures still come from .num. */
 .owned-table th.num, .owned-table td.num { text-align: center; }
-/* Free-form prose, which centring only makes harder to read. */
-.owned-table .notes-cell { text-align: left; }
 
 /* --- notices -------------------------------------------------------------- */
 
@@ -554,6 +563,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .picker-hit-meta { font-size: 0.75rem; }
 
 .chosen-card { font-size: 0.9rem; }
+/* The picked card, with its art beside the name. Small: it is here to confirm
+   the right card was chosen, not to be looked at, and the copy rows below it
+   are what the dialog is actually for. */
+.chosen-card-art { display: flex; gap: 0.9rem; align-items: flex-start; }
+.chosen-card-art .card-art { width: 7rem; flex: 0 0 auto; border-radius: var(--radius); }
+.chosen-card-art .chosen-card { flex: 1; }
 .copies-bar { gap: 0.5rem; }
 .copies-stepper { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; }
 .copies-stepper button { padding: 0.1rem 0.5rem; line-height: 1.4; }
@@ -561,4 +576,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .copies-table td { vertical-align: middle; }
 .copies-table select, .copies-table input { width: 100%; min-width: 6rem; }
 .copies-table td:first-child { width: 1.5rem; }
-.copies-table .lang-cell select { min-width: 8rem; }
+/* A flex row, for the same reason .search-bar-language is one: .lang-cell's
+   0.15rem margin is sized for a flag sitting beside a code in a table cell, and
+   against a full-height select it reads as the two touching. */
+.copies-table .lang-cell { display: flex; align-items: center; gap: 0.5rem; }
+.copies-table .lang-cell select { min-width: 8rem; flex: 1; }

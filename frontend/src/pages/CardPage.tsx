@@ -131,7 +131,6 @@ export default function CardPage() {
                 <th>Lang</th>
                 <th>Printing</th>
                 <th>Rarity</th>
-                <th>Notes</th>
                 <th />
               </tr>
             </thead>
@@ -158,7 +157,6 @@ export default function CardPage() {
                     )}
                   </td>
                   <td>{row.rarity ?? <span className="muted">—</span>}</td>
-                  <td className="muted notes-cell">{row.notes ?? ""}</td>
                   <td>
                     <EditEntryButton
                       passcode={card.passcode}

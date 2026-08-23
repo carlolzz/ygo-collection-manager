@@ -30,6 +30,9 @@ interface Draft {
   edition: string;
   language: string;
   quantity: number;
+  /** Carried, never edited. The form offers no control for it, but a saved row
+   *  replaces the old one and the incoming side wins the merge — so dropping it
+   *  here would erase whatever note the row arrived with. */
   notes: string;
 }
 
@@ -129,8 +132,7 @@ export default function EditEntryDialog({
 
   const changed =
     entryKeyOf(replacement) !== entryKeyOf(keyFor(passcode, row)) ||
-    draft.quantity !== row.quantity ||
-    (draft.notes.trim() || null) !== row.notes;
+    draft.quantity !== row.quantity;
 
   // Best effort, and it does not have to be exhaustive: it cannot see a row
   // under another passcode, and the server does the right thing either way.
@@ -221,14 +223,6 @@ export default function EditEntryDialog({
             </tbody>
           </table>
         </div>
-
-        <input
-          value={draft.notes}
-          disabled={busy}
-          placeholder="Notes (optional)"
-          aria-label="Notes"
-          onChange={(e) => set({ notes: e.target.value })}
-        />
 
         {collides && (
           <p className="muted" style={{ fontSize: "0.76rem", margin: 0 }}>

@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
+﻿import { useCallback, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 import { EXPORT_URL, getCatalogueStatus, getCollectionStatus } from "./api";
 import { CollectionReloadProvider } from "./collectionReload";
+import { DeclinedLanguagesProvider } from "./declinedLanguages";
 import AddCardButton from "./components/AddCardButton";
 import CatalogueBanner from "./components/CatalogueBanner";
 import EmptyState from "./components/EmptyState";
@@ -39,68 +40,72 @@ export default function App() {
 
   return (
     <PriceSourceProvider>
-      <CollectionReloadProvider onReload={onCollectionLoaded}>
-        <div className="app">
-          <nav className="nav">
-            <span className="nav-brand">YGO Collection Manager</span>
-            <div className="nav-links">
-              {LINKS.map((link) => (
-                <NavLink key={link.to} to={link.to} end={link.end}>
-                  {link.label}
-                </NavLink>
-              ))}
-            </div>
-            {status?.has_collection && (
-              <div className="nav-actions">
-                <span className="nav-status">{status.collection_rows} rows</span>
-                {/* Lives here, not on the valuation page: it decides the currency
-                    of the deck check and the card page too. */}
-                <PriceSourceSelect />
-                {/* An anchor, not a button: middle-click and "save link as" work,
-                    and no JavaScript stands between the click and the file. */}
-                <a
-                  className="button subtle"
-                  href={EXPORT_URL}
-                  download
-                  title="Download the loaded export, exactly as it is on disk"
-                >
-                  Download CSV
-                </a>
-                <AddCardButton onAdded={onCollectionLoaded} label="Add card" className="subtle" />
-                <UploadButton
-                  onLoaded={onCollectionLoaded}
-                  label="Load CSV"
-                  className="subtle"
-                  hasCollection
-                />
+      {/* Above both consumers: the banner has to disappear when the card picker
+          turns a language back on, and vice versa. */}
+      <DeclinedLanguagesProvider>
+        <CollectionReloadProvider onReload={onCollectionLoaded}>
+          <div className="app">
+            <nav className="nav">
+              <span className="nav-brand">YGO Collection Manager</span>
+              <div className="nav-links">
+                {LINKS.map((link) => (
+                  <NavLink key={link.to} to={link.to} end={link.end}>
+                    {link.label}
+                  </NavLink>
+                ))}
               </div>
-            )}
-          </nav>
+              {status?.has_collection && (
+                <div className="nav-actions">
+                  <span className="nav-status">{status.collection_rows} rows</span>
+                  {/* Lives here, not on the valuation page: it decides the currency
+                      of the deck check and the card page too. */}
+                  <PriceSourceSelect />
+                  {/* An anchor, not a button: middle-click and "save link as" work,
+                      and no JavaScript stands between the click and the file. */}
+                  <a
+                    className="button subtle"
+                    href={EXPORT_URL}
+                    download
+                    title="Download the loaded export, exactly as it is on disk"
+                  >
+                    Download CSV
+                  </a>
+                  <AddCardButton onAdded={onCollectionLoaded} label="Add card" className="subtle" />
+                  <UploadButton
+                    onLoaded={onCollectionLoaded}
+                    label="Load CSV"
+                    className="subtle"
+                    hasCollection
+                  />
+                </div>
+              )}
+            </nav>
 
-          {loading ? (
-            <Loading what="your collection" />
-          ) : status && !status.has_collection ? (
-            <EmptyState onLoaded={onCollectionLoaded} />
-          ) : (
-            <>
-              <CatalogueBanner
-                status={catalogue.data}
-                onRefreshed={() => {
-                  reloadCatalogue();
-                  reload();
-                }}
-              />
-              <Routes key={dataVersion}>
-                <Route path="/" element={<BrowsePage />} />
-                <Route path="/card/:passcode" element={<CardPage />} />
-                <Route path="/stats" element={<StatsPage />} />
-                <Route path="/valuation" element={<ValuationPage />} />
-                <Route path="/deck" element={<DeckPage />} />
-              </Routes>
-            </>
-          )}
-        </div>
-      </CollectionReloadProvider>
+            {loading ? (
+              <Loading what="your collection" />
+            ) : status && !status.has_collection ? (
+              <EmptyState onLoaded={onCollectionLoaded} />
+            ) : (
+              <>
+                <CatalogueBanner
+                  status={catalogue.data}
+                  onRefreshed={() => {
+                    reloadCatalogue();
+                    reload();
+                  }}
+                />
+                <Routes key={dataVersion}>
+                  <Route path="/" element={<BrowsePage />} />
+                  <Route path="/card/:passcode" element={<CardPage />} />
+                  <Route path="/stats" element={<StatsPage />} />
+                  <Route path="/valuation" element={<ValuationPage />} />
+                  <Route path="/deck" element={<DeckPage />} />
+                </Routes>
+              </>
+            )}
+          </div>
+        </CollectionReloadProvider>
+      </DeclinedLanguagesProvider>
     </PriceSourceProvider>
   );
 }

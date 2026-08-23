@@ -20,7 +20,13 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getCatalogueStatus, getCataloguePrintings, searchCatalogue } from "../api";
+import {
+  getCatalogueStatus,
+  getCataloguePrintings,
+  imageUrl,
+  searchCatalogue,
+} from "../api";
+import { useDeclinedLanguages } from "../declinedLanguages";
 import { useAsync } from "../hooks";
 import type { CatalogueCard, CataloguePrinting, NewEntry } from "../types";
 import { ErrorNotice } from "./common";
@@ -78,7 +84,6 @@ interface Copy {
   condition: string;
   edition: string;
   language: string;
-  notes: string;
 }
 
 /** The card being added, as the catalogue has it. */
@@ -105,7 +110,9 @@ function toRows(chosen: Chosen, copies: Copy[]): NewEntry[] {
       condition: copy.condition,
       edition: copy.edition,
       language: copy.language.trim().toUpperCase(),
-      notes: copy.notes.trim() || null,
+      // The column still exists and rows loaded from an export still carry
+      // theirs; a copy entered here simply never has one.
+      notes: null,
     };
     const key = entryKeyOf(row);
     const existing = rows.get(key);
@@ -135,22 +142,36 @@ export default function AddCardDialog({
 
   const defaults = useRef(loadDefaults());
   const [copies, setCopies] = useState<Copy[]>([]);
-  const [showNotes, setShowNotes] = useState(false);
 
   // Which language's names to search, which is also the language the copies
   // start in — someone entering an Italian card is holding an Italian card.
   const [language, setLanguage] = useState(defaults.current.language);
   const catalogue = useAsync(getCatalogueStatus, []);
+  const { declined, restore } = useDeclinedLanguages();
   // What the picker may offer, and which of those actually has names on disk.
   // A configured language whose index was never downloaded matches nothing at
   // all, so it is offered disabled rather than as a search that finds nothing.
-  const offered = useMemo(
-    () => catalogue.data?.search_languages ?? ["EN"],
-    [catalogue.data],
-  );
+  // A language turned down in the banner is dropped from the list entirely —
+  // but only while its names are genuinely absent. Once they are on disk there
+  // is nothing left to have declined, and hiding a search that would work would
+  // be the preference outliving its reason.
   const cached = useMemo(
     () => new Set(["EN", ...(catalogue.data?.languages ?? [])]),
     [catalogue.data],
+  );
+  const offered = useMemo(
+    () =>
+      (catalogue.data?.search_languages ?? ["EN"]).filter(
+        (code) => cached.has(code) || !declined.has(code),
+      ),
+    [catalogue.data, cached, declined],
+  );
+  const hidden = useMemo(
+    () =>
+      (catalogue.data?.search_languages ?? []).filter(
+        (code) => !cached.has(code) && declined.has(code),
+      ),
+    [catalogue.data, cached, declined],
   );
   const known = catalogue.data !== null;
   const available = cached.has(language);
@@ -195,7 +216,6 @@ export default function AddCardDialog({
       condition: defaults.current.condition,
       edition: defaults.current.edition,
       language,
-      notes: "",
     };
   }
 
@@ -225,7 +245,6 @@ export default function AddCardDialog({
       // and only the fields that differ have to be touched.
       const added = Array.from({ length: next - current.length }, () => ({
         ...current[current.length - 1],
-        notes: "",
       }));
       return [...current, ...added];
     });
@@ -301,6 +320,18 @@ export default function AddCardDialog({
               reaches the internet — it reads the card data already on disk.
             </p>
 
+            {/* The one place the decision is visible, so the one place to undo
+                it: a language missing from the dropdown with no explanation is
+                a preference that has become a mystery. */}
+            {hidden.map((code) => (
+              <p key={code} className="muted" style={{ fontSize: "0.76rem", margin: 0 }}>
+                {languageName(code)} card names are turned off.{" "}
+                <button className="link" onClick={() => restore(code)}>
+                  Turn back on
+                </button>
+              </p>
+            ))}
+
             {searchError && <ErrorNotice message={searchError} />}
 
             {known && !available && (
@@ -346,14 +377,24 @@ export default function AddCardDialog({
           </>
         ) : (
           <>
-            <div className="between chosen-card">
-              <span>
-                <strong>{chosen.name}</strong>
-                <span className="muted"> · {chosen.passcode}</span>
-              </span>
-              <button className="subtle" disabled={busy} onClick={back}>
-                Change card
-              </button>
+            <div className="chosen-card-art">
+              {/* The one confirmation that the right card was picked, which a
+                  name alone cannot give when a card has alternate artworks and
+                  three near-namesakes. The art comes from our own cache, which
+                  fetches it upstream once if this card has never been viewed —
+                  a card that is not owned yet usually has not been. Choosing a
+                  card is a click, so that stays within what this app promises
+                  about reaching YGOPRODeck, and the fetch happens only once. */}
+              <img className="card-art" src={imageUrl(chosen.passcode)} alt={chosen.name} />
+              <div className="between chosen-card">
+                <span>
+                  <strong>{chosen.name}</strong>
+                  <span className="muted"> · {chosen.passcode}</span>
+                </span>
+                <button className="subtle" disabled={busy} onClick={back}>
+                  Change card
+                </button>
+              </div>
             </div>
 
             <div className="between copies-bar">
@@ -377,9 +418,6 @@ export default function AddCardDialog({
                   +
                 </button>
               </span>
-              <button className="subtle" onClick={() => setShowNotes((v) => !v)}>
-                {showNotes ? "Hide notes" : "Add notes"}
-              </button>
             </div>
 
             <div className="table-wrap">
@@ -391,7 +429,6 @@ export default function AddCardDialog({
                     <th>Condition</th>
                     <th>Edition</th>
                     <th>Language</th>
-                    {showNotes && <th>Notes</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -438,16 +475,6 @@ export default function AddCardDialog({
                           onChange={(language) => editCopy(index, { language })}
                         />
                       </td>
-                      {showNotes && (
-                        <td>
-                          <input
-                            value={copy.notes}
-                            disabled={busy}
-                            placeholder="Optional"
-                            onChange={(e) => editCopy(index, { notes: e.target.value })}
-                          />
-                        </td>
-                      )}
                     </tr>
                   ))}
                 </tbody>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { getCatalogueRefresh, startCatalogueRefresh } from "../api";
 import { ErrorNotice, formatBytes, formatDays, formatEta } from "../components/common";
 import { languageName } from "../components/LanguageFlag";
+import { useDeclinedLanguages } from "../declinedLanguages";
 import type { CatalogueJob, CatalogueStatus } from "../types";
 
 /** Prompts for the one download the app cannot work without.
@@ -29,6 +30,7 @@ export default function CatalogueBanner({
 }) {
   const [job, setJob] = useState<CatalogueJob | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { declined, decline } = useDeclinedLanguages();
 
   // Through a ref: the parent passes a fresh arrow every render, and putting
   // that in the effect below would restart the poll on each one.
@@ -57,11 +59,14 @@ export default function CatalogueBanner({
 
   const missing = status.catalogue_cards === 0;
   const stale = !missing && (status.age_days ?? 0) > 30;
-  // Configured to be searchable, but with no names on disk to search.
+  // Configured to be searchable, with no names on disk to search — and not
+  // already turned down. Someone who owns nothing printed in a language should
+  // be asked about it once, not on every page load forever.
   const missingNames = missing
     ? []
     : status.search_languages.filter(
-        (code) => code !== "EN" && !status.languages.includes(code),
+        (code) =>
+          code !== "EN" && !status.languages.includes(code) && !declined.has(code),
       );
   if (!missing && !stale && missingNames.length === 0) return null;
 
@@ -100,16 +105,32 @@ export default function CatalogueBanner({
             </>
           )}
         </div>
-        <button
-          className="primary"
-          // Forced whenever there is an existing cache to replace: without it
-          // the refresh sees a cached dump and returns having done nothing.
-          onClick={() => download(stale || missingNames.length > 0)}
-          disabled={busy}
-          style={{ whiteSpace: "nowrap" }}
-        >
-          {busy ? "Downloading…" : missing ? "Download card data" : "Update now"}
-        </button>
+        <span className="row" style={{ flexWrap: "nowrap" }}>
+          {/* Only for the language prompt. The card data itself is not optional
+              — without it there are no attributes, no art and no prices — and a
+              stale cache is a fact about a download already made. A language
+              index is the one thing here somebody may genuinely not want. */}
+          {!missing && !stale && missingNames.length > 0 && (
+            <button
+              className="subtle"
+              onClick={() => decline(missingNames)}
+              disabled={busy}
+              style={{ whiteSpace: "nowrap" }}
+            >
+              No thanks
+            </button>
+          )}
+          <button
+            className="primary"
+            // Forced whenever there is an existing cache to replace: without it
+            // the refresh sees a cached dump and returns having done nothing.
+            onClick={() => download(stale || missingNames.length > 0)}
+            disabled={busy}
+            style={{ whiteSpace: "nowrap" }}
+          >
+            {busy ? "Downloading…" : missing ? "Download card data" : "Update now"}
+          </button>
+        </span>
       </div>
 
       {job && job.status !== "error" && <Progress job={job} />}

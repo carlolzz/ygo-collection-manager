@@ -7,7 +7,7 @@ import asyncio
 import sys
 
 from .catalogue.dump import fetch_dump, load_meta
-from .config import CACHE_DIR, collection_csv_path
+from .config import CACHE_DIR, CATALOGUE_LANGUAGES, collection_csv_path
 from .database import open_database
 
 __all__ = ["main"]
@@ -22,12 +22,20 @@ def _refresh_dump(args: argparse.Namespace) -> int:
         )
         return 0
 
-    print("Fetching the YGOPRODeck bulk dump (one request, several MB)...")
+    languages = ", ".join(CATALOGUE_LANGUAGES) or "none"
+    print(
+        f"Fetching the YGOPRODeck bulk dump, plus name indexes for {languages} "
+        f"({1 + len(CATALOGUE_LANGUAGES)} requests, tens of MB)..."
+    )
     meta = asyncio.run(fetch_dump(force=args.force, cache_dir=CACHE_DIR))
     print(
         f"Cached {meta.card_count} cards ({meta.byte_size / 1_048_576:.1f} MB) "
         f"at {meta.fetched_at}"
     )
+    if meta.languages:
+        print(f"Also searchable in: {', '.join(meta.languages)}")
+    elif CATALOGUE_LANGUAGES:
+        print("No localized names were available; search falls back to English.")
     return 0
 
 
@@ -59,6 +67,8 @@ def _status(args: argparse.Namespace) -> int:
             f"Catalogue:       {meta.card_count} cards, "
             f"fetched {meta.age_days:.1f} days ago"
         )
+        searchable = ", ".join(["EN", *meta.languages])
+        print(f"Searchable in:   {searchable}")
     return 0
 
 

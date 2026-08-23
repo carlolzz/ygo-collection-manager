@@ -53,9 +53,9 @@ def create_app(csv_path: Path | str | None = None) -> FastAPI:
             app.state.db.close()
 
     app = FastAPI(
-        title="YGO Collection Explorer",
+        title="YGO Collection Manager",
         description=__doc__,
-        version="0.2.0",
+        version="0.5.0",
         lifespan=lifespan,
     )
 
@@ -64,7 +64,7 @@ def create_app(csv_path: Path | str | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-        allow_methods=["GET", "POST", "DELETE"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
         allow_headers=["*"],
     )
 

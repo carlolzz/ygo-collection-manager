@@ -265,8 +265,8 @@ async def test_fetch_dump_leaves_an_existing_cache_alone(fixture_dump, tmp_path)
     requests: list[httpx.Request] = []
 
     async with _client(payload, requests) as client:
-        await fetch_dump(client=client, cache_dir=tmp_path)
-        await fetch_dump(client=client, cache_dir=tmp_path)
+        await fetch_dump(client=client, cache_dir=tmp_path, languages=())
+        await fetch_dump(client=client, cache_dir=tmp_path, languages=())
 
     assert len(requests) == 1, "a cached dump must not be re-downloaded implicitly"
 
@@ -277,10 +277,60 @@ async def test_force_refetches(fixture_dump, tmp_path):
     requests: list[httpx.Request] = []
 
     async with _client(payload, requests) as client:
-        await fetch_dump(client=client, cache_dir=tmp_path)
-        await fetch_dump(client=client, cache_dir=tmp_path, force=True)
+        await fetch_dump(client=client, cache_dir=tmp_path, languages=())
+        await fetch_dump(client=client, cache_dir=tmp_path, languages=(), force=True)
 
     assert len(requests) == 2
+
+
+@pytest.mark.asyncio
+async def test_each_configured_language_costs_exactly_one_more_request(
+    fixture_dump, tmp_path
+):
+    payload = fixture_dump.read_bytes()
+    requests: list[httpx.Request] = []
+    paths = CachePaths(tmp_path)
+
+    async with _client(payload, requests) as client:
+        meta = await fetch_dump(client=client, cache_dir=tmp_path, languages=("de", "it"))
+
+    assert [r.url.params.get("language") for r in requests] == [None, "de", "it"]
+    assert meta.languages == ["DE", "IT"]
+    assert paths.localized("de").is_file() and paths.localized("it").is_file()
+    assert paths.card_names.is_file()
+
+
+@pytest.mark.asyncio
+async def test_an_unavailable_translation_does_not_fail_the_refresh(fixture_dump, tmp_path):
+    """English is the catalogue; a language index is a convenience on top of it."""
+    payload = fixture_dump.read_bytes()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.params.get("language"):
+            return httpx.Response(503)
+        return httpx.Response(200, content=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        meta = await fetch_dump(client=client, cache_dir=tmp_path, languages=("de",))
+
+    assert meta.languages == []
+    assert meta.card_count == 6
+    assert CachePaths(tmp_path).cards.is_file()
+
+
+def test_a_meta_file_written_before_languages_existed_still_loads(tmp_path):
+    """The cache survives the upgrade rather than failing the app on boot."""
+    import json as _json
+
+    meta_path = tmp_path / "cardinfo.meta.json"
+    meta_path.write_text(
+        _json.dumps(
+            {"fetched_at": "2026-01-01T00:00:00+00:00", "card_count": 3,
+             "byte_size": 9, "source_url": "x"}
+        ),
+        encoding="utf-8",
+    )
+    assert load_meta(meta_path).languages == []
 
 
 def test_dump_meta_reports_its_age():

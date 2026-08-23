@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import build_catalogue, patch_catalogue_paths
 from ygo_explorer.api.main import create_app
-from ygo_explorer.catalogue.normalize import normalize_dump
 
 
 @pytest.fixture
@@ -19,20 +18,7 @@ def client(fixture_csv: Path, fixture_dump: Path, tmp_path: Path, monkeypatch):
     The defaults are patched rather than passed through, so the app under test
     is wired exactly as it is in production.
     """
-    cards = json.loads(fixture_dump.read_text(encoding="utf-8"))["data"]
-    paths = {
-        "CARDS_PARQUET": tmp_path / "cards.parquet",
-        "CARD_SETS_PARQUET": tmp_path / "card_sets.parquet",
-        "CARD_PRICES_PARQUET": tmp_path / "card_prices.parquet",
-    }
-    normalize_dump(
-        cards,
-        cards_path=paths["CARDS_PARQUET"],
-        card_sets_path=paths["CARD_SETS_PARQUET"],
-        card_prices_path=paths["CARD_PRICES_PARQUET"],
-    )
-    for name, path in paths.items():
-        monkeypatch.setattr(f"ygo_explorer.catalogue.views.{name}", path)
+    patch_catalogue_paths(monkeypatch, build_catalogue(fixture_dump, tmp_path))
 
     with TestClient(create_app(fixture_csv)) as c:
         yield c

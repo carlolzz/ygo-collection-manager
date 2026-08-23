@@ -8,10 +8,14 @@
 import type {
   CardDetail,
   CardPage,
+  CatalogueCard,
+  CataloguePrinting,
   CatalogueStatus,
   CollectionStatus,
   DeckAnalysis,
+  EntryKey,
   FilterOptions,
+  NewEntry,
   RefineJob,
   Stats,
   UploadPreview,
@@ -42,12 +46,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-const post = <T>(path: string, body?: unknown): Promise<T> =>
+const send = <T>(method: string, path: string, body?: unknown): Promise<T> =>
   request<T>(path, {
-    method: "POST",
+    method,
     headers: body === undefined ? {} : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+
+const post = <T>(path: string, body?: unknown): Promise<T> => send<T>("POST", path, body);
 
 export const listCards = (query: string) =>
   request<CardPage>(`/cards${query ? `?${query}` : ""}`);
@@ -106,6 +112,51 @@ export async function uploadCollection(
     body: form,
   });
 }
+
+/** Search the cached card data — every card, not only the owned ones.
+ *
+ * Served from the local dump, so this is free to call on every keystroke: it is
+ * a parquet scan, not a request to YGOPRODeck. A name is matched in English and
+ * in every cached language; all digits is matched as a passcode.
+ */
+export const searchCatalogue = (q: string, limit = 25) =>
+  request<CatalogueCard[]>(
+    `/catalogue/cards?q=${encodeURIComponent(q)}&limit=${limit}`,
+  );
+
+/** Every printing the card data lists for a card, with the owned ones flagged. */
+export const getCataloguePrintings = (passcode: string) =>
+  request<CataloguePrinting[]>(
+    `/catalogue/cards/${encodeURIComponent(passcode)}/printings`,
+  );
+
+/** Add rows to the collection.
+ *
+ * Rows agreeing on printing, condition, edition and language are folded into
+ * one on the server — including with rows already owned, which are incremented
+ * rather than duplicated. The whole request is one save: a single invalid row
+ * rejects all of it.
+ */
+export const addEntries = (rows: NewEntry[]) =>
+  post<CollectionStatus>("/collection/entries", { rows });
+
+/** Replace one row with another.
+ *
+ * The old row is removed and the new one folded back in, which is the scanner's
+ * own rule: editing a row into a printing, condition, edition and language
+ * already owned merges into that row rather than making a second one. Setting a
+ * quantity sets it — the old row is gone before the fold, so it is not added to.
+ */
+export const editEntry = (key: EntryKey, row: NewEntry) =>
+  send<CollectionStatus>("PATCH", "/collection/entries", { key, row });
+
+/** Remove one row. The export it is still in stays on disk. */
+export const deleteEntry = (key: EntryKey) =>
+  send<CollectionStatus>("DELETE", "/collection/entries", { keys: [key] });
+
+/** The loaded export, served as a file. A plain URL, like `imageUrl` — the
+ *  browser does the downloading, so there is no Blob and no JS in the path. */
+export const EXPORT_URL = "/api/collection/export";
 
 /** Art always comes from our own cache — never hotlinked from YGOPRODeck. */
 export const imageUrl = (passcode: string) =>

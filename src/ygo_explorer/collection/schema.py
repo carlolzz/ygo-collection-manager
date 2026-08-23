@@ -13,6 +13,7 @@ __all__ = [
     "CONDITION_RANK",
     "condition_rank_sql",
     "EDITIONS",
+    "ISO_FORMAT",
     "NULLABLE_TEXT_COLUMNS",
     "APOSTROPHE_GUARDED_COLUMNS",
     "NATURAL_KEY",
@@ -57,6 +58,11 @@ def condition_rank_sql(column: str = "condition") -> str:
 
 
 EDITIONS: tuple[str, ...] = ("FIRST", "UNLIMITED", "LIMITED")
+
+#: The subsecond-less ISO-8601 shape. One of the two the loader parses, and the
+#: one every CSV this app writes uses — so a timestamp written by the merge, by
+#: a hand-entered row or by a revision reads back byte-identical.
+ISO_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 #: Written as '' by the exporter when absent. Normalized to NULL once, on load.
 NULLABLE_TEXT_COLUMNS: tuple[str, ...] = ("set_code", "set_name", "rarity", "notes")

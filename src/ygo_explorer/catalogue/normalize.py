@@ -1,8 +1,9 @@
-"""Flatten the bulk dump into three parquet tables the query layer can join.
+"""Flatten the bulk dump into four parquet tables the query layer can join.
 
-Splitting cards, printings and prices apart keeps each one at its natural grain:
-one row per passcode, one per printing, one per card. Prices are carried as text
-and cast to DECIMAL downstream, so no amount ever passes through a float.
+Splitting cards, printings, prices and names apart keeps each one at its natural
+grain: one row per passcode, one per printing, one per card, one per card *per
+language*. Prices are carried as text and cast to DECIMAL downstream, so no
+amount ever passes through a float.
 
 Written with DuckDB rather than a dataframe library: it is already the query
 engine, it writes parquet natively, and the alternative added ~360 MB to the
@@ -15,7 +16,13 @@ from pathlib import Path
 
 import duckdb
 
-from ..config import CARD_PRICES_PARQUET, CARD_SETS_PARQUET, CARDS_PARQUET
+from ..config import (
+    BASE_LANGUAGE,
+    CARD_NAMES_PARQUET,
+    CARD_PRICES_PARQUET,
+    CARD_SETS_PARQUET,
+    CARDS_PARQUET,
+)
 from ..text import fold
 
 __all__ = [
@@ -23,10 +30,12 @@ __all__ = [
     "cards_rows",
     "card_sets_rows",
     "card_prices_rows",
+    "card_names_rows",
     "passcode_key",
     "CARDS_SCHEMA",
     "CARD_SETS_SCHEMA",
     "CARD_PRICES_SCHEMA",
+    "CARD_NAMES_SCHEMA",
 ]
 
 # The five price fields and the currency each is quoted in. YGOPRODeck mixes
@@ -72,6 +81,15 @@ CARD_SETS_SCHEMA: dict[str, str] = {
 
 CARD_PRICES_SCHEMA: dict[str, str] = {"card_id": "VARCHAR"} | {
     column: "VARCHAR" for _, column in PRICE_FIELDS
+}
+
+#: One row per card per language. Keyed on card_id rather than passcode because
+#: a name belongs to the card, not to one of its artworks.
+CARD_NAMES_SCHEMA: dict[str, str] = {
+    "card_id": "VARCHAR",
+    "language": "VARCHAR",
+    "name": "VARCHAR",
+    "name_folded": "VARCHAR",
 }
 
 
@@ -195,6 +213,47 @@ def card_prices_rows(cards: list[dict]) -> list[dict]:
     return rows
 
 
+def card_names_rows(
+    cards: list[dict], localized: dict[str, list[dict]] | None = None
+) -> list[dict]:
+    """Every name a card can be searched by, one row per language.
+
+    The base dump supplies the English names; each localized dump supplies one
+    more language for the cards it covers. A localized dump holds TCG cards only,
+    so most cards have fewer rows here than there are languages — which costs
+    nothing, since a card with no German name is still found by its English one.
+
+    Duplicates are dropped rather than merged: a localized dump that simply
+    echoes the English name adds no way to find the card and would otherwise make
+    the same card match twice for one query.
+    """
+    by_language: dict[str, list[dict]] = {BASE_LANGUAGE: cards}
+    for language, payload in (localized or {}).items():
+        by_language[language.upper()] = payload
+
+    rows: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for language, payload in by_language.items():
+        for card in payload:
+            name = card.get("name") or ""
+            if not name:
+                continue
+            card_id = str(card["id"])
+            folded = fold(name)
+            if (card_id, folded) in seen:
+                continue
+            seen.add((card_id, folded))
+            rows.append(
+                {
+                    "card_id": card_id,
+                    "language": language,
+                    "name": name,
+                    "name_folded": folded,
+                }
+            )
+    return rows
+
+
 def _write_parquet(path: Path, schema: dict[str, str], rows: list[dict]) -> int:
     """Write typed rows to parquet. An empty table still gets its columns."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -220,8 +279,17 @@ def normalize_dump(
     cards_path: Path = CARDS_PARQUET,
     card_sets_path: Path = CARD_SETS_PARQUET,
     card_prices_path: Path = CARD_PRICES_PARQUET,
+    card_names_path: Path = CARD_NAMES_PARQUET,
+    localized: dict[str, list[dict]] | None = None,
 ) -> dict[str, int]:
-    """Write the three tables; return each one's row count."""
+    """Write the four tables; return each one's row count.
+
+    Args:
+        cards: the base English dump.
+        localized: language code -> that language's dump, for name search only.
+            Absent means the names table holds English alone, which is exactly
+            what it did before other languages existed.
+    """
     written = {
         cards_path: _write_parquet(cards_path, CARDS_SCHEMA, cards_rows(cards)),
         card_sets_path: _write_parquet(
@@ -229,6 +297,9 @@ def normalize_dump(
         ),
         card_prices_path: _write_parquet(
             card_prices_path, CARD_PRICES_SCHEMA, card_prices_rows(cards)
+        ),
+        card_names_path: _write_parquet(
+            card_names_path, CARD_NAMES_SCHEMA, card_names_rows(cards, localized)
         ),
     }
     return {path.stem: count for path, count in written.items()}

@@ -1,0 +1,15 @@
+{
+  "_comment": [
+    "The Italian name index, as cardinfo.php?language=it returns it, trimmed to",
+    "the fixture cards and to the only field the names table reads.",
+    "",
+    "Necrovalle carries no accent while the English Nécrovalley does, which is",
+    "why both sides of the search are folded."
+  ],
+  "data": [
+    { "id": 46986414, "name": "Mago Nero" },
+    { "id": 47355498, "name": "Necrovalle" },
+    { "id": 27204311, "name": "Nibiru, l'Essere Primordiale" },
+    { "id": 8736823, "name": "Hime Mondo Virtuale - Nyannyan" }
+  ]
+}

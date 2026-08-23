@@ -2,7 +2,9 @@ import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getCard, imageUrl, valueCard } from "../api";
 import { Amount, ErrorNotice, Loading, formatCondition } from "../components/common";
+import EditEntryButton from "../components/EditEntryButton";
 import LanguageFlag from "../components/LanguageFlag";
+import { entryKeyOf, keyFor } from "../components/entryFields";
 import { useAction, useAsync } from "../hooks";
 import { usePriceSource } from "../priceSource";
 
@@ -130,11 +132,15 @@ export default function CardPage() {
                 <th>Printing</th>
                 <th>Rarity</th>
                 <th>Notes</th>
+                <th />
               </tr>
             </thead>
             <tbody>
-              {card.rows.map((row, i) => (
-                <tr key={i}>
+              {/* Keyed by the natural key, which is what the server calls a
+                  row's identity — so an edit re-renders the row it changed
+                  rather than whatever now sits at the same index. */}
+              {card.rows.map((row) => (
+                <tr key={entryKeyOf(keyFor(card.passcode, row))}>
                   <td className="num">{row.quantity}</td>
                   <td>{formatCondition(row.condition)}</td>
                   <td>{row.edition.toLowerCase()}</td>
@@ -153,6 +159,15 @@ export default function CardPage() {
                   </td>
                   <td>{row.rarity ?? <span className="muted">—</span>}</td>
                   <td className="muted">{row.notes ?? ""}</td>
+                  <td>
+                    <EditEntryButton
+                      passcode={card.passcode}
+                      name={card.name}
+                      row={row}
+                      siblings={card.rows}
+                      printings={card.printings}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>

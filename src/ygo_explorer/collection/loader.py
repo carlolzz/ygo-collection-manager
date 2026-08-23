@@ -24,6 +24,8 @@ __all__ = [
     "row_count",
     "normalized_query",
     "guard_expr",
+    "guard_text",
+    "FORMULA_TRIGGERS",
     "register_fold",
     "validate_header",
 ]
@@ -122,9 +124,18 @@ def _unguard(column: str) -> str:
 
 
 #: What the exporter's guard exists to defuse: the characters a spreadsheet
-#: treats as the start of a formula. Tab and carriage return are spelled with
-#: chr() so the generated SQL stays readable and has no invisible characters.
-_FORMULA_TRIGGERS = ("'='", "'+'", "'-'", "'@'", "chr(9)", "chr(13)")
+#: treats as the start of a formula. Stated once, in Python, because both the
+#: SQL guard and the Python one below have to agree on it — a test pins them.
+FORMULA_TRIGGERS: tuple[str, ...] = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _sql_char(char: str) -> str:
+    """One trigger as a SQL literal.
+
+    Tab and carriage return go through chr() so the generated SQL stays readable
+    and carries no invisible characters.
+    """
+    return f"chr({ord(char)})" if char in "\t\r" else f"'{char}'"
 
 
 def guard_expr(column: str) -> str:
@@ -134,11 +145,25 @@ def guard_expr(column: str) -> str:
     merged export would hand a spreadsheet a card named ``-Ancient Gear`` as a
     formula, which is the very thing the scanner's guard prevents.
     """
-    triggers = ", ".join(_FORMULA_TRIGGERS)
+    triggers = ", ".join(_sql_char(c) for c in FORMULA_TRIGGERS)
     return (
         f"CASE WHEN {column} IS NOT NULL AND left({column}, 1) IN ({triggers}) "
         f"THEN '''' || {column} ELSE {column} END"
     )
+
+
+def guard_text(value: str | None) -> str | None:
+    """``guard_expr`` for a value already in Python, used when writing a row.
+
+    Deliberately guards exactly what the SQL does and no more. A name that
+    genuinely begins with an apostrophe is therefore *not* guarded and loses that
+    apostrophe on the way back in — which is what the scanner's own exporter
+    does, and matching the contract matters more here than fixing a card name
+    that does not exist.
+    """
+    if value and value[0] in FORMULA_TRIGGERS:
+        return "'" + value
+    return value
 
 
 # The two ISO-8601 shapes Dart's toIso8601String can emit for a UTC instant.

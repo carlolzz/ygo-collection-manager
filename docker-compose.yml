@@ -1,9 +1,9 @@
 services:
-  ygo-explorer:
+  ygo-collection-manager:
     image: charliegordonmouse/ygo-explorer:latest
     # Comment the image line and uncomment this to build locally instead.
     # build: .
-    container_name: ygo-explorer
+    container_name: ygo-collection-manager
     ports:
       - "8000:8000"
     volumes:

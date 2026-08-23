@@ -10,13 +10,21 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from ..collection.schema import CONDITIONS, EDITIONS
 
 __all__ = [
     "CardSummary",
     "CardPage",
     "OwnedRow",
     "CataloguePrinting",
+    "CatalogueCard",
+    "NewEntry",
+    "NewEntries",
+    "EntryKey",
+    "EntryKeys",
+    "EntryEdit",
     "CardDetail",
     "Bucket",
     "TimeBucket",
@@ -112,6 +120,156 @@ class CataloguePrinting(BaseModel):
         description="Per-printing price, USD. There is no EUR equivalent at this grain.",
     )
     owned: bool = Field(description="Whether the collection holds this printing.")
+
+
+class CatalogueCard(BaseModel):
+    """A card the cached dump knows, owned or not. What the card picker offers."""
+
+    passcode: str
+    name: str
+    type: str | None = None
+    printing_count: int = Field(
+        description="Distinct printings the dump lists, i.e. how many the picker offers."
+    )
+    owned_copies: int = Field(
+        description="Copies already in the collection. Zero is the common case here."
+    )
+    matched_name: str | None = Field(
+        default=None,
+        description=(
+            "The name that matched, when it was not the English one above — so a "
+            "German or Italian search can show what it found. Never written to "
+            "the collection: a row's name is always the English one."
+        ),
+    )
+    matched_language: str | None = Field(
+        default=None, description="Language of matched_name, when there is one."
+    )
+
+
+class NewEntry(BaseModel):
+    """One row asked for by hand, before anything is written.
+
+    The same twelve columns the scanner exports, minus the two timestamps, which
+    are the server's to stamp. Every copy carries its own printing, grade,
+    edition and language, so three copies of one card in three languages are
+    three of these — that is the whole reason the request takes a list.
+    """
+
+    passcode: str = Field(
+        pattern=r"^[0-9]{1,8}$",
+        description="1-8 digits, kept as a string: leading zeros are part of it.",
+    )
+    name: str = Field(min_length=1)
+    set_code: str | None = None
+    set_name: str | None = None
+    rarity: str | None = None
+    condition: str = Field(description=f"One of {list(CONDITIONS)}.")
+    edition: str = Field(description=f"One of {list(EDITIONS)}.")
+    language: str = Field(
+        min_length=1,
+        description=(
+            "Free-form by contract, so an unlisted code is accepted and only "
+            "upper-cased. EN, DE, FR, IT, SP, PT, JP, KR and AE are what the "
+            "scanner offers."
+        ),
+    )
+    quantity: int = Field(ge=1, description="Copies this row stands for.")
+    notes: str | None = None
+
+    @field_validator("passcode", "name", "language", mode="before")
+    @classmethod
+    def _trim(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    # Absent is '' on the wire and NULL in the file. Normalizing here means the
+    # natural key of a hand-entered row matches an imported one with no set.
+    @field_validator("set_code", "set_name", "rarity", "notes", mode="before")
+    @classmethod
+    def _blank_to_none(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
+    @field_validator("language")
+    @classmethod
+    def _upper(cls, value: str) -> str:
+        return value.upper()
+
+    @field_validator("condition")
+    @classmethod
+    def _known_condition(cls, value: str) -> str:
+        if value not in CONDITIONS:
+            raise ValueError(f"unknown condition {value!r}; expected one of {list(CONDITIONS)}")
+        return value
+
+    @field_validator("edition")
+    @classmethod
+    def _known_edition(cls, value: str) -> str:
+        if value not in EDITIONS:
+            raise ValueError(f"unknown edition {value!r}; expected one of {list(EDITIONS)}")
+        return value
+
+
+class NewEntries(BaseModel):
+    """A save: one card's copies, or several cards' — the server does not care."""
+
+    rows: list[NewEntry] = Field(
+        min_length=1,
+        max_length=500,
+        description="Rows identical in printing, grade, edition and language are folded into one.",
+    )
+
+
+class EntryKey(BaseModel):
+    """Which row, out of everything owned — the seven ``NATURAL_KEY`` columns.
+
+    Deliberately *not* validated the way ``NewEntry`` is, despite the overlap.
+    This is a lookup of a value already on file, not a value being written: the
+    loader leaves ``condition``, ``edition`` and ``language`` exactly as the CSV
+    spells them, so a row stored as ``" en "`` is served back verbatim by the
+    card endpoint. Trimming or upper-casing here — or enforcing the passcode
+    pattern — would make a row that plainly exists impossible to address, which
+    is a worse failure than accepting a key that matches nothing.
+
+    There is no row id to use instead: the export contract has none, and adding
+    one would mean this app's CSVs no longer being the scanner's CSVs.
+    """
+
+    passcode: str
+    set_code: str | None = None
+    set_name: str | None = None
+    rarity: str | None = None
+    condition: str
+    edition: str
+    language: str
+
+    # The one normalization that is safe, and necessary: the browser sends '' for
+    # a column the loader stored as NULL.
+    @field_validator("set_code", "set_name", "rarity", mode="before")
+    @classmethod
+    def _blank_to_none(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
+
+class EntryKeys(BaseModel):
+    """Rows to remove. Every key must match, or none of them are removed."""
+
+    keys: list[EntryKey] = Field(min_length=1, max_length=500)
+
+
+class EntryEdit(BaseModel):
+    """A row as it stands, and the row it should become.
+
+    The replacement is an ordinary ``NewEntry`` — an edit writes the same ten
+    columns a hand-entered row does, and there is no reason for it to be
+    validated any more loosely.
+    """
+
+    key: EntryKey
+    row: NewEntry
 
 
 class CardDetail(CardSummary):
@@ -309,6 +467,13 @@ class UploadPreview(BaseModel):
 class CatalogueStatus(BaseModel):
     fetched_at: datetime | None = None
     age_days: float | None = None
+    languages: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Languages the card picker can be searched in besides English. Empty "
+            "means only English names are cached."
+        ),
+    )
     catalogue_cards: int
     catalogue_passcodes: int
     collection_rows: int

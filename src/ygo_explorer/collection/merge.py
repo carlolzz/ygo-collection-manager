@@ -20,9 +20,16 @@ from pathlib import Path
 import duckdb
 
 from .loader import guard_expr, normalized_query, register_fold, validate_header
-from .schema import COLLECTION_COLUMNS, NATURAL_KEY
+from .schema import COLLECTION_COLUMNS, ISO_FORMAT, NATURAL_KEY
 
-__all__ = ["MergeCounts", "merge_counts", "merge_to_csv"]
+__all__ = [
+    "MergeCounts",
+    "fold_to_csv",
+    "load",
+    "merge_counts",
+    "merge_to_csv",
+    "session",
+]
 
 
 class MergeCounts:
@@ -44,21 +51,40 @@ _KEY = ", ".join(NATURAL_KEY)
 
 
 @contextmanager
-def _stacked(existing: Path, incoming: Path) -> Iterator[duckdb.DuckDBPyConnection]:
-    """Both exports, normalized and stacked into one ``stacked`` table.
+def session() -> Iterator[duckdb.DuckDBPyConnection]:
+    """A connection ready to read exports into.
 
-    ``src`` says which side a row came from: 0 loaded, 1 uploaded. Materialized
-    rather than left as CTEs, because the normalization is itself a ``WITH``
-    query and cannot simply be nested inside another one.
+    Public because ``revise.py`` combines exports too, by a different rule, and
+    the alternative to sharing this seam is a second copy of the projection
+    below — which is exactly the thing that must not drift.
     """
-    validate_header(incoming)
     with duckdb.connect() as con:
         con.execute("SET TimeZone = 'UTC'")
         # The normalization computes fold(name), so the UDF must exist even
         # though nothing here reads the folded column.
         register_fold(con)
-        con.execute(f"CREATE TABLE loaded AS {normalized_query(existing)}")
-        con.execute(f"CREATE TABLE uploaded AS {normalized_query(incoming)}")
+        yield con
+
+
+def load(con: duckdb.DuckDBPyConnection, name: str, path: Path) -> None:
+    """Materialize one export, normalized, as table ``name``.
+
+    Materialized rather than left as a view, because the normalization is itself
+    a ``WITH`` query and cannot simply be nested inside another one.
+    """
+    validate_header(path)
+    con.execute(f"CREATE TABLE {name} AS {normalized_query(path)}")
+
+
+@contextmanager
+def _stacked(existing: Path, incoming: Path) -> Iterator[duckdb.DuckDBPyConnection]:
+    """Both exports, normalized and stacked into one ``stacked`` table.
+
+    ``src`` says which side a row came from: 0 loaded, 1 uploaded.
+    """
+    with session() as con:
+        load(con, "loaded", existing)
+        load(con, "uploaded", incoming)
         con.execute(
             "CREATE TABLE stacked AS "
             "SELECT 0 AS src, * FROM loaded "
@@ -104,15 +130,22 @@ def _newest(column: str) -> str:
     return f"COALESCE(any_value({column}) FILTER (WHERE src = 1), any_value({column}))"
 
 
-# The two ISO-8601 shapes the loader accepts; this is the one without
-# subseconds, so a written timestamp reads back through try_strptime unchanged.
-_ISO = "'%Y-%m-%dT%H:%M:%SZ'"
+# The contract's timestamp shape, quoted for SQL.
+_ISO = f"'{ISO_FORMAT}'"
 
 
-def merge_to_csv(
-    existing: Path, incoming: Path, out_path: Path, *, sum_quantities: bool
+def fold_to_csv(
+    con: duckdb.DuckDBPyConnection,
+    source: str,
+    out_path: Path,
+    *,
+    sum_quantities: bool,
 ) -> None:
-    """Write the two exports combined to ``out_path``, in the export contract.
+    """Group ``source`` on the natural key and write it out as an export.
+
+    The single place that decides the shape of every CSV this app writes.
+    ``source`` is a table carrying the normalized columns and an ``src`` flag —
+    0 for what was already there, 1 for what is arriving.
 
     Columns are projected in ``COLLECTION_COLUMNS`` order and the apostrophe
     guard is re-applied, so the output is an export like any other and the
@@ -135,15 +168,22 @@ def merge_to_csv(
     )
 
     destination = str(out_path.resolve().as_posix()).replace("'", "''")
+    con.execute(
+        f"""
+        COPY (
+            SELECT {projection}
+            FROM {source}
+            GROUP BY {_KEY}
+            ORDER BY name, set_code, condition, edition, language
+        ) TO '{destination}'
+        (FORMAT CSV, HEADER, DELIMITER ',', QUOTE '"', ESCAPE '"')
+        """
+    )
+
+
+def merge_to_csv(
+    existing: Path, incoming: Path, out_path: Path, *, sum_quantities: bool
+) -> None:
+    """Write the two exports combined to ``out_path``, in the export contract."""
     with _stacked(existing, incoming) as con:
-        con.execute(
-            f"""
-            COPY (
-                SELECT {projection}
-                FROM stacked
-                GROUP BY {_KEY}
-                ORDER BY name, set_code, condition, edition, language
-            ) TO '{destination}'
-            (FORMAT CSV, HEADER, DELIMITER ',', QUOTE '"', ESCAPE '"')
-            """
-        )
+        fold_to_csv(con, "stacked", out_path, sum_quantities=sum_quantities)

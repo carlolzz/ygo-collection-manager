@@ -1,6 +1,6 @@
 # Getting started
 
-A guide to running the YGO Collection Explorer on your own computer. No
+A guide to running the YGO Collection Manager on your own computer. No
 programming needed, you'll copy and paste one command.
 
 It takes about 15 minutes, most of which is waiting for a download.
@@ -15,7 +15,12 @@ file is the same thing cut down to the five steps.
 You point it at a CSV file exported from the card scanner app, and it gives you
 a browsable, searchable view of your collection: card artwork, filters, charts,
 a rough value, and a tool that checks a deck list against what you own and tells
-you what you're missing.
+you what you're missing. You can also add cards here, by typing a name or the
+number printed on the card, correct or remove ones already in it, and download
+the whole thing back out as a spreadsheet — all without touching the scanner
+app.
+
+If you have no CSV at all, start it anyway and add your first card by hand.
 
 Everything runs on your own computer. Nothing is uploaded anywhere, and the app
 never changes your collection file, it only reads it.
@@ -118,7 +123,8 @@ Leave that terminal window open. Closing it stops the app.
 Go to **<http://localhost:8000>**
 
 That's it. If your CSV was in the `data` folder, your collection is already
-there. If not, the page will show a **Choose a CSV export** button.
+there. If not, the page will show a **Choose a CSV export** button, and an
+**Add a card by hand** button next to it.
 
 ### One thing to do on your first visit
 
@@ -169,6 +175,61 @@ asks what to do with the overlap:
 Whichever you pick, the CSV files already in your `data` folder are left exactly
 as they are. The result is written as a new `ygo_collection_…csv` beside them,
 so nothing you've loaded before is ever lost, and the app reads the newest one.
+
+### Adding a card by hand
+
+Click **Add card** in the top right and type the card's name, or the 8-digit
+number printed in its bottom-left corner. Names work in English, German and
+Italian, so *Kartenkavallerist* finds Card Trooper.
+
+Pick the card, then say how many copies you have. **You get one line per copy**,
+because three copies of a card are often not three of the same thing: one might
+be German and Common, another Italian, Rare and 1st Edition, another an English
+Ultra Rare. Set each line's set, condition, edition and language separately.
+
+Lines that end up identical are stored as one, and if you already own a card in
+exactly that state its quantity goes up instead of it being listed twice. The
+dialog tells you which will happen before you save.
+
+If the card isn't found — a very new set, usually — click **Not listed? Add it
+by hand** and type the number and name yourself. It's stored just the same, and
+its artwork and stats appear once the card data catches up.
+
+Each save writes a new `ygo_collection_…csv` in your `data` folder. To undo one,
+delete that newest file and restart the app.
+
+### Fixing a mistake
+
+Click a card, and every line under **What you own** has an **Edit** button. It
+opens the same fields you filled in when adding: the set, condition, edition,
+language, how many copies, and a note. Change what's wrong and click **Save
+changes**.
+
+Two things worth knowing:
+
+- If you edit a line into something you already own — say you had it down as
+  Near Mint and it's really the same card, same set, same language as another
+  line — the two are joined into one line and the copies added together. The
+  dialog tells you before you save.
+- Changing the number of copies **sets** it. If a line says 5 and you sold two,
+  put 3, not -2.
+
+**Removing a line** is the **Delete** button in the same dialog. It asks once to
+be sure. Nothing is really destroyed: like every other change, deleting writes a
+new `ygo_collection_…csv` and leaves the old one sitting in your `data` folder.
+
+If you'd rather go back to before a change entirely, delete the newest
+`ygo_collection_…csv` from `data` and restart the app.
+
+### Getting your collection back out
+
+Click **Download CSV** in the top right. You get the collection exactly as the
+app has it, as a spreadsheet-friendly file you can open in Excel, back up, or
+load straight back in with **Load CSV**.
+
+It's the same file that lives in your `data` folder, so if you're running from
+source you can just as well copy it from there. The button matters more if
+you're running the app in Docker, where that folder is harder to get at.
 
 ---
 
@@ -238,7 +299,9 @@ PowerShell instead (Step 3).
 ## Is this safe?
 
 - Everything runs on your computer. Your collection is never uploaded.
-- The app only reads your CSV file, it can't change or delete it.
+- The app never changes or deletes a CSV file you already have. Loading, adding,
+  editing and deleting all write a *new* file, leaving the old ones exactly as
+  they were — which is why deleting the newest one always undoes the last change.
 - It only uses the internet to download the public card catalogue and card
   pictures, and only when you ask it to.
 - No account, no sign-up, no tracking.

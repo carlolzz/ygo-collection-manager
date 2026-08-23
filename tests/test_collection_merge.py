@@ -7,14 +7,13 @@ actually add them. Both directions are asserted on real numbers.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import build_catalogue, patch_catalogue_paths
 from ygo_explorer.api.main import create_app
-from ygo_explorer.catalogue.normalize import normalize_dump
 from ygo_explorer.collection.loader import open_collection
 from ygo_explorer.collection.merge import merge_counts, merge_to_csv
 from ygo_explorer.collection.schema import COLLECTION_COLUMNS
@@ -204,20 +203,7 @@ def test_a_file_that_is_not_an_export_is_refused_before_anything_is_written(tmp_
 @pytest.fixture
 def client(fixture_csv: Path, fixture_dump: Path, tmp_path: Path, monkeypatch):
     """A loaded collection, with uploads landing in a throwaway data directory."""
-    cards = json.loads(fixture_dump.read_text(encoding="utf-8"))["data"]
-    paths = {
-        "CARDS_PARQUET": tmp_path / "cards.parquet",
-        "CARD_SETS_PARQUET": tmp_path / "card_sets.parquet",
-        "CARD_PRICES_PARQUET": tmp_path / "card_prices.parquet",
-    }
-    normalize_dump(
-        cards,
-        cards_path=paths["CARDS_PARQUET"],
-        card_sets_path=paths["CARD_SETS_PARQUET"],
-        card_prices_path=paths["CARD_PRICES_PARQUET"],
-    )
-    for name, path in paths.items():
-        monkeypatch.setattr(f"ygo_explorer.catalogue.views.{name}", path)
+    patch_catalogue_paths(monkeypatch, build_catalogue(fixture_dump, tmp_path))
     monkeypatch.setattr("ygo_explorer.api.routes.collection.DATA_DIR", tmp_path / "data")
     with TestClient(create_app(fixture_csv)) as c:
         yield c

@@ -61,6 +61,55 @@ export interface CataloguePrinting {
   owned: boolean;
 }
 
+/** A card the cached dump knows, owned or not. What the card picker offers. */
+export interface CatalogueCard {
+  passcode: string;
+  name: string;
+  type: string | null;
+  printing_count: number;
+  /** Copies of this card already held, counted per card rather than per passcode. */
+  owned_copies: number;
+  /** The name that matched, when it was not the English one. Never stored. */
+  matched_name: string | null;
+  matched_language: string | null;
+}
+
+/** One row on its way in: a stack of copies that agree on every detail.
+ *
+ * Deliberately not `OwnedRow`: the timestamps are the server's to stamp, and
+ * conflating "what I am asking for" with "what is on file" is how a client ends
+ * up inventing a created_at.
+ */
+export interface NewEntry {
+  passcode: string;
+  name: string;
+  set_code: string | null;
+  set_name: string | null;
+  rarity: string | null;
+  condition: string;
+  edition: string;
+  language: string;
+  quantity: number;
+  notes: string | null;
+}
+
+/** Which row, out of everything owned — the server's seven-column natural key.
+ *
+ * There is no row id in the export contract, so this *is* a row's identity. The
+ * values must be echoed back exactly as the API served them: the server matches
+ * them against the file verbatim, and a client that tidied them up would fail to
+ * find a row it is looking straight at.
+ */
+export interface EntryKey {
+  passcode: string;
+  set_code: string | null;
+  set_name: string | null;
+  rarity: string | null;
+  condition: string;
+  edition: string;
+  language: string;
+}
+
 export interface CardDetail extends CardSummary {
   description: string | null;
   rows: OwnedRow[];
@@ -118,6 +167,8 @@ export interface FilterOptions {
 export interface CatalogueStatus {
   fetched_at: string | null;
   age_days: number | null;
+  /** Languages the picker can be searched in besides English. */
+  languages: string[];
   catalogue_cards: number;
   catalogue_passcodes: number;
   collection_rows: number;

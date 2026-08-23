@@ -100,7 +100,12 @@ h3 { font-size: 0.95rem; }
 .nav-links a.active { background: var(--accent-soft); color: var(--accent); }
 .nav-actions { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .nav-status { font-size: 0.8rem; color: var(--text-faint); }
-.nav-actions button, .nav-actions select { padding: 0.25rem 0.6rem; font-size: 0.8rem; width: auto; }
+.nav-actions button, .nav-actions .button, .nav-actions select {
+  padding: 0.25rem 0.6rem; font-size: 0.8rem; width: auto;
+}
+/* The download is an anchor, so it needs the hover a button gets for free —
+   and the underline every other link gets, taken back off. */
+.nav-actions .button:hover { border-color: var(--accent); text-decoration: none; }
 /* Tighter than the page selects, but the chevron still needs its room. */
 .nav-actions select { padding-right: 1.6rem; background-position: right 0.55rem center; }
 .upload-error { font-size: 0.78rem; padding: 0.3rem 0.55rem; }
@@ -448,4 +453,49 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .choice .muted { font-size: 0.76rem; line-height: 1.35; }
 
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+/* Destructive on the left, away from Save. */
+.modal-actions.split { justify-content: space-between; }
 .modal .filename { color: var(--text); font-size: 0.88rem; }
+
+/* Add a card. Wider than the upload dialog because a copy is a row of four
+   choices, and stacking those would hide the very comparison being made. */
+.modal-wide { width: min(52rem, 100%); }
+
+.picker-results {
+  display: flex;
+  flex-direction: column;
+  max-height: 15rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.picker-hit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+}
+.picker-hit + .picker-hit { border-top: 1px solid var(--border); }
+.picker-hit:hover:not(:disabled) { background: var(--accent-soft); border-color: transparent; }
+.picker-hit-name { font-size: 0.86rem; }
+.picker-hit-meta { font-size: 0.75rem; }
+
+.by-hand { display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-start; }
+.by-hand-fields { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.by-hand-fields input { flex: 1 1 8rem; min-width: 7rem; }
+
+.chosen-card { font-size: 0.9rem; }
+.copies-bar { gap: 0.5rem; }
+.copies-stepper { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; }
+.copies-stepper button { padding: 0.1rem 0.5rem; line-height: 1.4; }
+
+.copies-table td { vertical-align: middle; }
+.copies-table select, .copies-table input { width: 100%; min-width: 6rem; }
+.copies-table td:first-child { width: 1.5rem; }
+.copies-table .lang-cell select { min-width: 8rem; }

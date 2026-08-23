@@ -11,7 +11,13 @@ from pathlib import Path
 
 import duckdb
 
-from ..config import CARD_PRICES_PARQUET, CARD_SETS_PARQUET, CARDS_PARQUET
+from ..config import (
+    BASE_LANGUAGE,
+    CARD_NAMES_PARQUET,
+    CARD_PRICES_PARQUET,
+    CARD_SETS_PARQUET,
+    CARDS_PARQUET,
+)
 
 __all__ = ["attach_catalogue", "CATALOGUE_TABLES"]
 
@@ -54,6 +60,14 @@ CATALOGUE_TABLES: dict[str, str] = {
         ebay_price_usd          DECIMAL(12, 2),
         amazon_price_usd        DECIMAL(12, 2),
         coolstuffinc_price_usd  DECIMAL(12, 2)
+    """,
+    # Search only. Nothing downstream displays a card by these or writes one to
+    # the ledger — a collection row's name is always the English one.
+    "card_names": """
+        card_id            VARCHAR,
+        language           VARCHAR,
+        name               VARCHAR,
+        name_folded        VARCHAR
     """,
 }
 
@@ -170,12 +184,24 @@ SELECT
 """
 
 
+#: A cache written before localized names existed has cards.parquet but no
+#: card_names.parquet. Seeding the table from the English names already in
+#: `cards` keeps the picker working on such a cache, instead of silently finding
+#: nothing until the user happens to refresh the dump.
+_SEED_NAMES = f"""
+INSERT INTO card_names
+SELECT DISTINCT card_id, '{BASE_LANGUAGE}', name, name_folded
+FROM cards WHERE name IS NOT NULL
+"""
+
+
 def attach_catalogue(
     con: duckdb.DuckDBPyConnection,
     *,
     cards_path: Path | None = None,
     card_sets_path: Path | None = None,
     card_prices_path: Path | None = None,
+    card_names_path: Path | None = None,
 ) -> None:
     """Create the catalogue tables and the joined views on an open connection.
 
@@ -190,11 +216,15 @@ def attach_catalogue(
         "cards": cards_path or CARDS_PARQUET,
         "card_sets": card_sets_path or CARD_SETS_PARQUET,
         "card_prices": card_prices_path or CARD_PRICES_PARQUET,
+        "card_names": card_names_path or CARD_NAMES_PARQUET,
     }
     for table, ddl in CATALOGUE_TABLES.items():
         con.execute(f"CREATE OR REPLACE TABLE {table} ({ddl})")
         if paths[table].is_file():
             _load_parquet(con, table, paths[table])
+
+    if not paths["card_names"].is_file():
+        con.execute(_SEED_NAMES)
 
     con.execute(_ENRICHED)
     con.execute(_BY_CARD)

@@ -8,7 +8,7 @@ import duckdb
 from fastapi import Request
 
 from ..catalogue.views import attach_catalogue
-from ..collection.loader import open_collection
+from ..collection.loader import open_collection, register_fold
 from ..config import collection_csv_path
 from ..pricing.refine import JobRegistry
 from ..pricing.snapshots import SnapshotStore
@@ -66,6 +66,11 @@ class Database:
         else:
             self._con = duckdb.connect()
             self._con.execute("SET TimeZone = 'UTC'")
+            # Registered here too, not only in open_collection: the card picker
+            # queries the catalogue before there is any collection to load, and
+            # a first-run user searching for their first card must not hit a
+            # missing fold().
+            register_fold(self._con)
             self._con.execute(_EMPTY_COLLECTION)
             self.csv_path = None
             self.has_collection = False

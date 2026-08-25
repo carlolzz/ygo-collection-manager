@@ -8,6 +8,19 @@ import { ConditionBadge, entryKeyOf, keyFor } from "../components/entryFields";
 import { useAction, useAsync } from "../hooks";
 import { usePriceSource } from "../priceSource";
 
+/** Upstream files three unrelated taxonomies under one "race" column, exactly as
+ *  collection_enriched splits them: for monsters it is the creature type, for
+ *  spells and traps the subtype, and for skill cards a character name. Label the
+ *  row for what the card actually is rather than repeating the dump's word. */
+function raceLabel(type: string | null): string {
+  if (type === null) return "Subtype";
+  if (type.includes("Monster") || type === "Token") return "Monster type";
+  if (type.includes("Spell")) return "Spell type";
+  if (type.includes("Trap")) return "Trap type";
+  if (type.includes("Skill")) return "Character";
+  return "Subtype";
+}
+
 export default function CardPage() {
   const { passcode = "" } = useParams();
   const { source } = usePriceSource();
@@ -26,7 +39,7 @@ export default function CardPage() {
   const stats: [string, string | number | null][] = [
     ["Type", card.type],
     ["Attribute", card.attribute],
-    ["Race", card.race],
+    [raceLabel(card.type), card.race],
     ["Level", card.level],
     ["ATK", card.atk],
     ["DEF", card.defense],

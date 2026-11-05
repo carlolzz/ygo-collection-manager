@@ -271,6 +271,24 @@ export interface DeckCard {
   zones: Record<string, number>;
   unit_price: Money | null;
   subtotal: Money | null;
+  /** Of the copies owned, how many other flagged deck checks are holding. */
+  held_elsewhere: number;
+  held_by: string[];
+}
+
+/** A saved deck check, with its counts as of now. */
+export interface DeckCheck {
+  id: string;
+  name: string;
+  source_format: "ydke" | "ydk" | "plaintext";
+  created_at: string;
+  checked_at: string;
+  /** Holds the copies it uses, so other deck checks don't count them. */
+  owned: boolean;
+  flagged_at: string | null;
+  total_needed: number;
+  total_missing: number;
+  copies_held: number;
 }
 
 export interface DeckAnalysis {
@@ -288,4 +306,7 @@ export interface DeckAnalysis {
   missing_ydke: string;
   missing_text: string;
   cards: DeckCard[];
+  check: DeckCheck | null;
+  /** The list as it was pasted. */
+  text: string;
 }

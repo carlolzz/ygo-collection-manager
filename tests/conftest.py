@@ -120,3 +120,15 @@ def store(tmp_path: Path):
     s = SnapshotStore(tmp_path / "snapshots.parquet")
     yield s
     s.close()
+
+
+@pytest.fixture(autouse=True)
+def _deck_checks_in_tmp(tmp_path: Path, monkeypatch):
+    """Every test its own saved deck checks.
+
+    Checking a deck saves it, so without this every test that ran a check would
+    leave it in the shared sandbox for the next one to trip over.
+    """
+    monkeypatch.setattr(
+        "ygo_explorer.config.DECK_CHECKS_PATH", tmp_path / "deck_checks.json"
+    )

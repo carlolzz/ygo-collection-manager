@@ -433,6 +433,40 @@ class DeckCardOut(BaseModel):
     zones: dict[str, int]
     unit_price: MoneyOut | None = None
     subtotal: MoneyOut | None = None
+    held_elsewhere: int = Field(
+        default=0,
+        description="Of the copies owned, how many other flagged deck checks "
+        "are holding. They do not count towards this deck.",
+    )
+    held_by: list[str] = Field(
+        default_factory=list, description="The names of the checks holding them."
+    )
+
+
+class DeckCheckOut(BaseModel):
+    """A saved deck check, with its counts as of now."""
+
+    id: str
+    name: str
+    source_format: str
+    created_at: datetime
+    checked_at: datetime
+    owned: bool = Field(
+        description="Whether the check holds the copies it uses, so other "
+        "checks do not count them."
+    )
+    flagged_at: datetime | None = Field(
+        default=None,
+        description="When the flag went on. An earlier flag wins a contested copy.",
+    )
+    total_needed: int
+    total_missing: int
+    copies_held: int = Field(description="Copies this check is holding right now.")
+
+
+class DeckCheckPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    owned: bool | None = None
 
 
 class DeckAnalysisOut(BaseModel):
@@ -459,6 +493,10 @@ class DeckAnalysisOut(BaseModel):
         description="The missing copies as a zone-grouped plaintext list.",
     )
     cards: list[DeckCardOut]
+    check: DeckCheckOut | None = Field(
+        default=None, description="The saved check this analysis belongs to."
+    )
+    text: str = Field(default="", description="The list as it was pasted.")
 
 
 class CollectionStatus(BaseModel):

@@ -51,6 +51,7 @@ collection and offers an upload button.
 | | |
 |---|---|
 | `data/ygo_collection_*.csv` | your collection; the newest one is loaded, older ones are kept |
+| `data/deck_checks.json` | every deck check you have run, and which ones hold their copies; back it up with the CSV |
 | `data/cache/cardinfo.json` | the YGOPRODeck bulk dump, ~21 MB, fetched on request |
 | `data/cache/cardinfo.it.json` | the Italian name index, ~19 MB |
 | `data/cache/*.parquet` | derived card, printing, name and price tables |
@@ -167,7 +168,9 @@ priced, the currency, and how old the data is.
 
 **Deck check.** Paste a `ydke://` code, a `.ydk` file or a plain typed list; get
 what you are missing and roughly what it would cost, plus the shortfall written
-back out as a copyable `ydke://` code and a copyable text list.
+back out as a copyable `ydke://` code and a copyable text list. Every check is
+kept in a history, and a deck you have built can be flagged **owned** so the
+copies it uses are not counted again for the next deck.
 
 **One price source, chosen in the top bar** and remembered between visits. It
 governs the valuation, the deck check and the per-card figure alike, so two
@@ -190,6 +193,15 @@ the pricing notes below.
 - **Spare copies are not progress.** Owning six of a card a deck runs three of
   contributes three.
 - **A line matching no card is reported, never silently dropped.**
+- **Every check is saved**, and checking the same list again updates its entry
+  rather than adding another. A saved check can be reopened, renamed or deleted.
+- **A deck flagged "owned" holds its copies.** Other checks no longer count
+  them as owned, so two decks built from one copy of a card cannot both read
+  complete. When flagged decks compete for the same copies, the one flagged
+  first keeps them. The holds are recalculated on every check, never frozen:
+  unflag or delete a deck and its copies go to the next one, and a card added
+  to the collection goes to whoever is short. The CSV is never touched; the
+  flags live in `data/deck_checks.json`.
 - **The shortfall comes back out in both formats.** Owned copies are spent main
   first, then extra, then side, so the export says which zone each missing copy
   belongs to. Both forms parse back in, so pasting either one returns the same

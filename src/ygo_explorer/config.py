@@ -20,6 +20,12 @@ CARD_NAMES_PARQUET = CACHE_DIR / "card_names.parquet"
 
 IMAGE_CACHE_DIR = CACHE_DIR / "images"
 
+# Saved deck checks and their "owned for this deck" flags. In the data dir, not
+# the cache: this is the user's own record, not something a refresh rebuilds.
+DECK_CHECKS_PATH = Path(
+    os.environ.get("YGO_DECK_CHECKS", DATA_DIR / "deck_checks.json")
+)
+
 # The built SPA. Absent in development (Vite serves it); present in the image.
 FRONTEND_DIST = Path(
     os.environ.get("YGO_FRONTEND_DIST", PROJECT_ROOT / "frontend" / "dist")

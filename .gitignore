@@ -10,6 +10,8 @@ data/cache/
 # Somebody's actual collection, and the upload endpoint writes a new
 # timestamped one every merge — so match the shape, not one file name.
 data/ygo_collection_*.csv
+# Saved deck checks: someone's decks, and which copies each one holds.
+data/deck_checks.json*
 frontend/node_modules/
 frontend/dist/
 *.tsbuildinfo

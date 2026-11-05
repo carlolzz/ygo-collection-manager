@@ -9,10 +9,16 @@ Two counting decisions that everything else follows from:
   Magician whatever the artwork, and the catalogue already maps alternate-art
   passcodes back to their card. Cards the dump has never heard of fall back to
   matching on the passcode itself.
+
+And one that comes from the saved checks: **copies held by a flagged deck are
+not owned for any other deck.** ``held`` says, per card, how many copies other
+decks are holding and which; those copies are subtracted before the deck being
+checked is compared. Who holds what is decided in ``reserve``.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
 import duckdb
@@ -23,7 +29,17 @@ from ..pricing.ygoprodeck import YgoprodeckProvider
 from .parse import ZONES, Deck
 from .resolve import Resolution, resolve_deck
 
-__all__ = ["DeckCard", "DeckAnalysis", "analyze_deck"]
+__all__ = [
+    "DeckCard",
+    "DeckAnalysis",
+    "Ownership",
+    "analyze_deck",
+    "demand_of",
+    "owned_counts",
+]
+
+#: Per card_id: (holding deck's name, copies it holds), in claim order.
+Held = Mapping[str, Sequence[tuple[str, int]]]
 
 
 @dataclass(frozen=True)
@@ -37,6 +53,9 @@ class DeckCard:
     zones: dict[str, int]
     unit_price: Money | None
     subtotal: Money | None
+    #: Of the copies owned, how many other flagged decks are holding.
+    held_elsewhere: int = 0
+    held_by: tuple[str, ...] = ()
 
     @property
     def is_priced(self) -> bool:
@@ -84,29 +103,29 @@ GROUP BY card_id, passcode
 """
 
 
-def _owned_counts(con: duckdb.DuckDBPyConnection) -> tuple[dict[str, int], dict[str, int]]:
+@dataclass(frozen=True)
+class Ownership:
     """Copies owned, keyed by card_id and (for dumpless rows) by passcode."""
+
+    by_card: dict[str, int]
+    by_passcode: dict[str, int]
+
+    def of(self, card_id: str, passcode: str) -> int:
+        return self.by_card.get(card_id, self.by_passcode.get(passcode, 0))
+
+
+def owned_counts(con: duckdb.DuckDBPyConnection) -> Ownership:
     by_card: dict[str, int] = {}
     by_passcode: dict[str, int] = {}
     for card_id, passcode, copies in con.execute(_OWNED).fetchall():
         if card_id is not None:
             by_card[card_id] = by_card.get(card_id, 0) + copies
         by_passcode[passcode] = by_passcode.get(passcode, 0) + copies
-    return by_card, by_passcode
+    return Ownership(by_card, by_passcode)
 
 
-def analyze_deck(
-    con: duckdb.DuckDBPyConnection,
-    deck: Deck,
-    *,
-    source_field: str = DEFAULT_PRICE_FIELD,
-    resolution: Resolution | None = None,
-) -> DeckAnalysis:
-    """What the deck needs, what is owned, and what the shortfall would cost."""
-    resolution = resolution or resolve_deck(con, deck)
-    provider = YgoprodeckProvider(con, source_field)
-
-    # Aggregate demand per card across all three zones.
+def demand_of(resolution: Resolution) -> dict[str, dict]:
+    """What the deck needs per card, aggregated across all three zones."""
     demand: dict[str, dict] = {}
     for entry in resolution.resolved:
         card = demand.setdefault(
@@ -120,8 +139,32 @@ def analyze_deck(
         )
         card["needed"] += entry.quantity
         card["zones"][entry.zone] += entry.quantity
+    return demand
 
-    owned_by_card, owned_by_passcode = _owned_counts(con)
+
+def analyze_deck(
+    con: duckdb.DuckDBPyConnection,
+    deck: Deck,
+    *,
+    source_field: str = DEFAULT_PRICE_FIELD,
+    resolution: Resolution | None = None,
+    held: Held | None = None,
+    ownership: Ownership | None = None,
+) -> DeckAnalysis:
+    """What the deck needs, what is owned, and what the shortfall would cost.
+
+    Args:
+        held: copies other flagged decks are holding, which this deck may not
+            count as owned. None means nothing is held.
+        ownership: the counts ``held`` was worked out from, so both read the
+            same collection; looked up here when not given.
+    """
+    resolution = resolution or resolve_deck(con, deck)
+    provider = YgoprodeckProvider(con, source_field)
+    held = held or {}
+
+    demand = demand_of(resolution)
+    ownership = ownership or owned_counts(con)
     prices = provider.market_low(list(demand))
 
     analysis = DeckAnalysis(
@@ -132,8 +175,11 @@ def analyze_deck(
     )
 
     for card_id, info in demand.items():
-        owned = owned_by_card.get(card_id, owned_by_passcode.get(info["passcode"], 0))
-        missing = max(0, info["needed"] - owned)
+        owned = ownership.of(card_id, info["passcode"])
+        holders = held.get(card_id, ())
+        held_elsewhere = min(owned, sum(copies for _, copies in holders))
+        available = owned - held_elsewhere
+        missing = max(0, info["needed"] - available)
         unit = prices.get(card_id)
         subtotal = (unit * missing).rounded() if unit is not None and missing else None
 
@@ -148,13 +194,16 @@ def analyze_deck(
                 zones=info["zones"],
                 unit_price=unit,
                 subtotal=subtotal,
+                held_elsewhere=held_elsewhere,
+                held_by=tuple(name for name, _ in holders),
             )
         )
 
         analysis.total_needed += info["needed"]
         # Only the copies the deck actually uses count as "owned for this deck";
-        # a spare fourth copy is not progress towards a three-of.
-        analysis.total_owned += min(owned, info["needed"])
+        # a spare fourth copy is not progress towards a three-of. Nor is one
+        # another deck is holding.
+        analysis.total_owned += min(available, info["needed"])
         analysis.total_missing += missing
         if missing:
             analysis.distinct_missing += 1

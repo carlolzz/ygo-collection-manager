@@ -99,7 +99,9 @@ export default function App() {
                   <Route path="/card/:passcode" element={<CardPage />} />
                   <Route path="/stats" element={<StatsPage />} />
                   <Route path="/valuation" element={<ValuationPage />} />
-                  <Route path="/deck" element={<DeckPage />} />
+                  {/* One route with an optional id, not two: two would remount
+                      the page when a check is run and its address changes. */}
+                  <Route path="/deck/:checkId?" element={<DeckPage />} />
                 </Routes>
               </>
             )}

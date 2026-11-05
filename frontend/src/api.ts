@@ -14,6 +14,7 @@ import type {
   CatalogueStatus,
   CollectionStatus,
   DeckAnalysis,
+  DeckCheck,
   EntryKey,
   FilterOptions,
   NewEntry,
@@ -94,8 +95,28 @@ export const getRefinement = (id: string) => request<RefineJob>(`/valuation/refi
 export const cancelRefinement = (id: string) =>
   request<RefineJob>(`/valuation/refine/${id}`, { method: "DELETE" });
 
+/** Checks a list and saves the check. The same list again updates its entry. */
 export const analyzeDeck = (text: string, sourceField: string) =>
   post<DeckAnalysis>("/deck/analyze", { text, source_field: sourceField });
+
+export const listDeckChecks = () => request<DeckCheck[]>("/deck/checks");
+
+/** A saved check, compared against the collection as it is now. */
+export const getDeckCheck = (id: string, sourceField: string) =>
+  request<DeckAnalysis>(
+    `/deck/checks/${encodeURIComponent(id)}?source_field=${encodeURIComponent(sourceField)}`,
+  );
+
+export const updateDeckCheck = (id: string, patch: { name?: string; owned?: boolean }) =>
+  send<DeckCheck>("PATCH", `/deck/checks/${encodeURIComponent(id)}`, patch);
+
+/** Answers 204, so not through `request`, which would try to parse a body. */
+export async function deleteDeckCheck(id: string): Promise<void> {
+  const response = await fetch(`/api/deck/checks/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new ApiError(`${response.status} ${response.statusText}`, response.status);
+}
 
 /** What to do with rows the loaded collection already has. */
 export type UploadMode = "replace" | "merge_sum" | "merge_keep";

@@ -247,7 +247,7 @@ you're running the app in Docker, where that folder is harder to get at.
 | **Browse** | Your cards, with pictures. Filter by anything; the web address updates so you can bookmark a filtered view. |
 | **Statistics** | Charts: what conditions you own, which types, when you added things, which cards you have most of. |
 | **Valuation** | Press a button to get a rough total value. It's clearly labelled an estimate, and it tells you how confident it is. |
-| **Deck check** | Paste a deck list and see what you're missing and roughly what it'd cost. |
+| **Deck check** | Paste a deck list and see what you're missing and roughly what it'd cost. Checks are saved, and a deck you've built can hold its cards so other decks don't count them. |
 
 ### About the deck check
 
@@ -266,6 +266,19 @@ Side Deck:
 It works out which cards you're short of, counting the main, extra and side deck
 together, since you need those cards at the same time. A different artwork of a
 card still counts as owning it.
+
+Every check you run is saved in the **Deck checks** list at the bottom of the
+page, so you can reopen it later, rename it, or delete it. Checking the same list
+again updates the saved one instead of adding a copy.
+
+**Building more than one deck from the same cards?** Once you've built a deck,
+switch on **Owned for this deck**. The cards that deck uses are then set aside
+for it, and other deck checks stop counting them. Say you own one copy of a card
+and two decks both need it: flag the first deck, and the second deck will show
+that card as missing, "held by" the first. Switch the flag off (or delete the
+check) and the copy is free again. If two flagged decks want the same copy, the
+one you flagged first keeps it. None of this changes your collection file; the
+flags are kept in `data/deck_checks.json`, so back that up along with your CSV.
 
 ### About the prices
 

@@ -1,7 +1,9 @@
 """The FastAPI app.
 
-Local, single-user, read-only. There is no auth: the scanner app owns the
-collection, and this only reads its export.
+Local and single-user. There is no auth. The scanner app owns the collection;
+this reads its export and writes new ones only when asked to (an upload, an
+added or edited row). The one thing it keeps of its own is the saved deck
+checks, in their own file beside the export.
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 
 from ..catalogue.job import RefreshRegistry
 from ..config import FRONTEND_DIST, WARM_IMAGES_ON_STARTUP
+from ..deck.history import DeckCheckStore
 from ..images import ImageCache
 from ..pricing.refine import JobRegistry
 from ..pricing.snapshots import SnapshotStore
@@ -49,6 +52,8 @@ def create_app(csv_path: Path | str | None = None) -> FastAPI:
         # *missing* export does not: the container starts with an empty mount.
         app.state.db = Database(csv_path)
         app.state.snapshots = SnapshotStore()
+        # Written through on every change, so it needs no flush on the way out.
+        app.state.deck_checks = DeckCheckStore()
         app.state.jobs = JobRegistry()
         app.state.catalogue_jobs = RefreshRegistry()
         app.state.images = ImageCache()
